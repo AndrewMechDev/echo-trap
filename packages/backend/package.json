@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "convex dev",
     "test:flow": "tsx scripts/test-flow.ts",
-    "test:gemini": "tsx scripts/test-gemini.ts"
+    "test:gemini": "tsx scripts/test-gemini.ts",
+    "test:prod": "tsx scripts/test-prod.ts"
   },
   "dependencies": {
     "@echo-trap/shared": "workspace:*",
