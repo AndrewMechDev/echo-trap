@@ -8,10 +8,19 @@
  * @module
  */
 
+import type * as adapters_DeepgramVoiceAdapter from "../adapters/DeepgramVoiceAdapter.js";
+import type * as adapters_LocalWav2Vec2DetectionAdapter from "../adapters/LocalWav2Vec2DetectionAdapter.js";
+import type * as adapters_TruthScanDetectionAdapter from "../adapters/TruthScanDetectionAdapter.js";
+import type * as alerts from "../alerts.js";
+import type * as calls from "../calls.js";
+import type * as detections from "../detections.js";
 import type * as domain_thresholds from "../domain/thresholds.js";
+import type * as honeypot from "../honeypot.js";
 import type * as ports_TelephonyPort from "../ports/TelephonyPort.js";
 import type * as ports_VoiceDetectionPort from "../ports/VoiceDetectionPort.js";
 import type * as ports_VoiceSynthesisPort from "../ports/VoiceSynthesisPort.js";
+import type * as usecases_activarHoneypot from "../usecases/activarHoneypot.js";
+import type * as usecases_evaluarAudio from "../usecases/evaluarAudio.js";
 
 import type {
   ApiFromModules,
@@ -20,10 +29,19 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "adapters/DeepgramVoiceAdapter": typeof adapters_DeepgramVoiceAdapter;
+  "adapters/LocalWav2Vec2DetectionAdapter": typeof adapters_LocalWav2Vec2DetectionAdapter;
+  "adapters/TruthScanDetectionAdapter": typeof adapters_TruthScanDetectionAdapter;
+  alerts: typeof alerts;
+  calls: typeof calls;
+  detections: typeof detections;
   "domain/thresholds": typeof domain_thresholds;
+  honeypot: typeof honeypot;
   "ports/TelephonyPort": typeof ports_TelephonyPort;
   "ports/VoiceDetectionPort": typeof ports_VoiceDetectionPort;
   "ports/VoiceSynthesisPort": typeof ports_VoiceSynthesisPort;
+  "usecases/activarHoneypot": typeof usecases_activarHoneypot;
+  "usecases/evaluarAudio": typeof usecases_evaluarAudio;
 }>;
 
 /**

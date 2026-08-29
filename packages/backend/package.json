@@ -6,10 +6,12 @@
     "dev": "convex dev"
   },
   "dependencies": {
+    "@echo-trap/shared": "workspace:*",
     "convex": "^1.19.0",
-    "@echo-trap/shared": "workspace:*"
+    "zod": "^3.24.0"
   },
   "devDependencies": {
+    "@types/node": "^22.20.1",
     "typescript": "^5.7.0"
   }
 }
