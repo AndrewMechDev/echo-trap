@@ -49,7 +49,11 @@ pnpm dev
 
 ## Detección de voz
 
-La detección de voz clonada corre 100% contra la API de **TruthScan** (`TRUTHSCAN_API_KEY`, seteada en Convex vía `npx convex env set`). No hay motor local ni microservicio propio — ver `DECISIONS.md`.
+La detección de voz clonada corre 100% contra la API de **TruthScan** (`TRUTHSCAN_API_KEY`, seteada en Convex vía `npx convex env set`). No hay motor local ni microservicio propio — ver `DECISIONS.md`. TruthScan exige clips de al menos 4 segundos.
+
+## Análisis de contenido
+
+Señal separada del semáforo acústico: transcribe la llamada con **Deepgram** (`DEEPGRAM_API_KEY`, STT) y la razona con **MiniMax M3** (`MINIMAX_API_KEY`) para clasificarla como `verdadera | sospechosa_de_estafa | enganosa | inconclusa`, con fact-checking real vía **Tavily** (`TAVILY_API_KEY`, function-calling) para verificar entidades/datos mencionados en la llamada. Se dispara solo cuando el semáforo acústico ya da amarillo o rojo — ver `DECISIONS.md`.
 
 ## Probar el flujo sin frontend armado
 

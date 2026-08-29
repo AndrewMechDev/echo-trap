@@ -46,12 +46,12 @@ export const activarHoneypotAction = action({
       return { ok: false as const, reason: resultado.reason ?? "no se pudo generar el audio dilatorio" };
     }
 
-    // Convex no serializa ArrayBuffer directo como resultado de una action — se
-    // devuelve como array de bytes (opción más simple y válida) para que el caller lo
-    // reconstruya del lado del cliente si lo necesita.
+    // Convex SÍ soporta ArrayBuffer/v.bytes() directo como valor de retorno (hasta 1MB)
+    // — convertirlo antes a number[] (versión anterior) rompía con audios de más de
+    // 8192 bytes, que es el límite real de un array de Convex, no del bytestring.
     return {
       ok: true as const,
-      audioBytes: Array.from(new Uint8Array(resultado.audio)),
+      audio: resultado.audio,
     };
   },
 });
