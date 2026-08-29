@@ -44,16 +44,17 @@ async function main() {
   const detecciones = await client.query(api.detections.listarDeteccionesPorLlamada, { callId });
   console.table(detecciones);
 
+  // evaluarAudioAction ya encadena honeypot + alerta internamente cuando el veredicto
+  // es "rojo" — no hace falta (ni conviene) dispararlos de nuevo acá.
   if (resultado.ok && resultado.veredicto === "rojo") {
-    console.log(`\n🍯 Veredicto rojo — probando honeypot...`);
-    const honeypot = await client.action(api.honeypot.activarHoneypotAction, {
-      callId,
-      veredicto: resultado.veredicto,
-    });
-    console.log(honeypot.ok ? `   audio dilatorio generado (${honeypot.audioBytes.length} bytes)` : `   ${honeypot.reason}`);
+    console.log(`\n🍯 Honeypot encadenado por el backend:`);
+    console.log(
+      resultado.honeypotAudioBytes
+        ? `   audio dilatorio generado (${resultado.honeypotAudioBytes.length} bytes)`
+        : `   no se generó audio (revisar reason en el resultado de arriba)`
+    );
 
-    console.log(`\n🚨 Creando alerta...`);
-    await client.mutation(api.alerts.crearAlerta, { callId, tipo: "veredicto_rojo" });
+    console.log(`\n🚨 Alertas persistidas para esta llamada:`);
     const alertas = await client.query(api.alerts.listarAlertasPorLlamada, { callId });
     console.table(alertas);
   }
