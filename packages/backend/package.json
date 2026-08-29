@@ -1,0 +1,15 @@
+{
+  "name": "@echo-trap/backend",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "convex dev"
+  },
+  "dependencies": {
+    "convex": "^1.19.0",
+    "@echo-trap/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}
