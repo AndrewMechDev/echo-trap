@@ -38,34 +38,19 @@ packages/backend/convex/
 9. **NO se implementa login/autenticación de usuarios en este hackathon.** Clerk no se activa. Si se necesita guardar un "contacto de confianza" para las alertas, se guarda sin usuario asociado (campo libre en la UI, persistido en Convex).
 9.1. **Voz del honeypot: Deepgram (Aura TTS), no MiniMax.** MiniMax queda fuera del código en vivo — solo se usa manualmente/offline para generar el clip de prueba de voz clonada (el ataque simulado), eso no es parte de este repo. `DeepgramVoiceAdapter` implementa `VoiceSynthesisPort` con la key `DEEPGRAM_API_KEY` (una sola key, sin group id ni voice model id).
 9.2. **Alertas sin n8n por ahora.** El MVP usa un popup en la UI: `alerts.ts` solo persiste en la tabla `alerts` (mutation `crearAlerta`) y expone una query para que el frontend la lea reactivo. El webhook de n8n es una skill/feature futura, se implementa SOLO si el humano lo pide explícitamente — no asumir que hay que integrarlo todavía.
-10. **Motor remoto confirmado: TruthScan** (no se evalúan alternativas de pago como Resemble o AI or Not — decisión del equipo por límite de créditos). Reality Defender queda eliminado del flujo por completo (>10min de latencia en pruebas), no se implementa su adapter. `evaluarAudio.ts` **nunca debe esperar indefinidamente a ningún motor remoto**:
-    - **Motor local (`LocalWav2Vec2DetectionAdapter`) es la fuente principal y rápida** del semáforo — responde en <1-2s, determina el color inicial que ve el usuario.
-    - **TruthScan es una señal secundaria de refuerzo, no bloqueante**: timeout duro y corto.
-    - Implementar con `Promise.race` / `AbortController`, nunca un `await` simple sin límite de tiempo:
-      ```ts
-      async function conTimeout<T>(promesa: Promise<T>, ms: number): Promise<T | { ok: false; reason: "timeout" }> {
-        const timeout = new Promise<{ ok: false; reason: "timeout" }>((resolve) =>
-          setTimeout(() => resolve({ ok: false, reason: "timeout" }), ms)
-        );
-        return Promise.race([promesa, timeout]);
-      }
-
-      // en evaluarAudio.ts
-      const [local, remoto] = await Promise.all([
-        conTimeout(detectorLocal.detectar(audio), 3000),   // motor local: 3s de margen
-        conTimeout(detectorRemoto.detectar(audio), 4000),  // TruthScan: 4s, si no responde se ignora
-      ]);
-      ```
-    - Si TruthScan llega a tiempo → veredicto por consenso (umbrales de abajo). Si no llega a tiempo (`reason: "timeout"`) → el veredicto se basa **solo en el motor local**, sin esperar más. Si responde tarde, se puede loguear en Convex como dato adicional para el timeline, pero **nunca vuelve a cambiar el semáforo retroactivamente en medio de la demo**.
-    - Usar constantes de umbral en `domain/thresholds.ts`:
+10. **Motor remoto confirmado: TruthScan** (no se evalúan alternativas de pago como Resemble o AI or Not — decisión del equipo por límite de créditos). Reality Defender queda eliminado del flujo por completo (>10min de latencia en pruebas), no se implementa su adapter. `evaluarAudio.ts` **nunca debe esperar indefinidamente a ningún motor remoto**.
+10.1. **CAMBIO DE ARQUITECTURA (2026-08-29, ver DECISIONS.md): TruthScan pasa a definir el VEREDICTO FINAL, no es solo un bono.** Calibración real con audio del equipo mostró que el motor local (wav2vec2) da falsos positivos frecuentes con voces reales, mientras que TruthScan clasificó correctamente todos los casos probados. A cambio, TruthScan es lento en la práctica: su API real es un flujo de 4 pasos (URL pre-firmada → subir audio → `/detect` → sondear `/query`) que en pruebas tardó **~7s de punta a punta**, no los <1s que se podía asumir de una API síncrona simple.
+    - **Motor local sigue respondiendo primero (margen 3s)** — define un semáforo **PROVISORIO** que se persiste en Convex apenas llega, para que el usuario vea algo rápido.
+    - **TruthScan corre en paralelo desde el arranque, con margen ampliado a 9s** — cuando responde a tiempo, define el semáforo **FINAL** (pisa al provisorio). Si no llega a tiempo, el provisorio del motor local se confirma como final sin más espera.
+    - Implementación real en `detections.ts`: arrancar `localPromise` y `remotoPromise` en paralelo (ambas envueltas en `conTimeout` de `usecases/evaluarAudio.ts`), esperar `local` primero y persistir el veredicto provisorio (`insertarDeteccion`, source `"local"`), después esperar `remoto` (ya viene corriendo) y persistir el veredicto final (source `"truthscan"` si llegó a tiempo, `"local-final"` si no). El frontend lee `listarDeteccionesPorLlamada` reactivo — la fila más reciente por `timestamp` es siempre la que corresponde mostrar.
+    - Umbrales en `domain/thresholds.ts`, sin cambios tras la calibración inicial:
       ```ts
       export const SCAM_THRESHOLD = {
-        HIGH_CONFIDENCE: 70, // ambos motores de acuerdo en "sintética" (cuando TruthScan SÍ respondió a tiempo)
-        SUSPICIOUS: 45,      // solo el motor local respondió (caso más común) o solo uno marca
+        HIGH_CONFIDENCE: 70,
+        SUSPICIOUS: 45,
       };
       ```
-      Estos números son un punto de partida — se recalibran con pruebas de audio real del equipo; no tratarlos como definitivos.
-    - **Regla general que no cambia:** el sistema está diseñado para que la demo funcione con el motor local solo. TruthScan es un bono, nunca un bloqueante.
+      Confirmados con audio real: voz real del equipo (WAV sin comprimir) → score ~0, voz clonada (MiniMax) → score ~49, ambos casos calzan bien contra `SUSPICIOUS: 45`. **Usar siempre WAV/M4A para grabar pruebas, nunca MP3** — la compresión lossy generaba falsos positivos masivos (99.99% "fake" para cualquier audio, incluso real) en el motor local.
 
 ## Fuera de alcance para este hackathon (NO construir)
 - Telefonía real entrante (Vapi con número público) salvo que el humano lo pida explícitamente tras validar la demo de 2 teléfonos.
