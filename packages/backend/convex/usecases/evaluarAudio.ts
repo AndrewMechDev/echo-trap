@@ -46,3 +46,10 @@ export async function evaluarAudio(
 
   return { ok: true, veredicto, score };
 }
+
+// El análisis de contenido (transcripción + razonamiento + búsqueda web) es costoso en
+// tiempo y en créditos de las 3 APIs que usa — solo se dispara si el semáforo acústico
+// ya sospecha algo. En "verde" no hay motivo para gastarlo en cada llamada normal.
+export function requiereAnalisisContenido(veredicto: Verdict): boolean {
+  return veredicto === "amarillo" || veredicto === "rojo";
+}

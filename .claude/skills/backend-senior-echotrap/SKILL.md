@@ -12,16 +12,24 @@ packages/backend/convex/
 ├─ ports/             # interfaces (contratos) que definen QUÉ hace cada proveedor externo, no CÓMO
 │  ├─ VoiceDetectionPort.ts     # detectar(audioBuffer) => DetectionResult
 │  ├─ VoiceSynthesisPort.ts     # sintetizar(texto, voiceId) => audioBuffer
-│  └─ TelephonyPort.ts          # (si se usa Vapi) iniciarLlamada(), enviarRespuesta()
+│  ├─ TelephonyPort.ts          # (si se usa Vapi) iniciarLlamada(), enviarRespuesta()
+│  ├─ TranscriptionPort.ts      # transcribir(audioBuffer, mimeType) => TranscriptionResult
+│  ├─ ContentAnalysisPort.ts    # analizar(transcript) => ContentAnalysisResult
+│  └─ WebSearchPort.ts          # buscar(query) => WebSearchResult — usado vía function-calling desde ContentAnalysisPort
 ├─ adapters/          # implementaciones concretas de cada port
-│  ├─ TruthScanDetectionAdapter.ts          # ÚNICA fuente de detección de voz clonada (ver DECISIONS.md — motor local descartado)
+│  ├─ TruthScanDetectionAdapter.ts          # ÚNICA fuente de detección ACÚSTICA de voz clonada (ver DECISIONS.md — motor local descartado)
 │  ├─ DeepgramVoiceAdapter.ts               # síntesis de voz del honeypot (Aura TTS) — reemplaza a MiniMax, ver DECISIONS.md
+│  ├─ DeepgramTranscriptionAdapter.ts       # voz a texto (STT, /v1/listen) — paso previo al análisis de contenido
+│  ├─ MiniMaxContentAnalysisAdapter.ts      # razona sobre el TEXTO transcripto (M3 no acepta audio directo) + loop de tool-calling con WebSearchPort para fact-checking real
+│  ├─ TavilyWebSearchAdapter.ts             # búsqueda real (créditos sponsor) — Gemini quedó descartado para esto (grounding no disponible en plan gratis, ver DECISIONS.md)
 │  └─ VapiTelephonyAdapter.ts               # pendiente, fuera de alcance hasta que se confirme telefonía real
 ├─ usecases/          # lógica de negocio pura: orquesta ports, no sabe de Convex
-│  ├─ evaluarAudio.ts            # recibe buffer, usa VoiceDetectionPort, devuelve veredicto
-│  └─ activarHoneypot.ts         # decide cuándo disparar el agente dilatorio
-├─ schema.ts           # tablas Convex (calls, detections, alerts)
+│  ├─ evaluarAudio.ts            # recibe buffer, usa VoiceDetectionPort, devuelve veredicto ACÚSTICO (semáforo) + requiereAnalisisContenido(veredicto)
+│  ├─ activarHoneypot.ts         # decide cuándo disparar el agente dilatorio
+│  └─ analizarContenido.ts       # transcribir → analizar (con búsqueda), devuelve veredicto de CONTENIDO (campo separado, ver DECISIONS.md)
+├─ schema.ts           # tablas Convex (calls, detections, alerts, contentAnalysis)
 ├─ detections.ts        # mutations/actions Convex — SOLO llaman a usecases, no tienen lógica propia
+├─ contenido.ts          # análisis de contenido (transcripción + MiniMax) — mismo patrón que detections.ts, tabla separada
 ├─ honeypot.ts
 └─ alerts.ts
 

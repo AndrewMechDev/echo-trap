@@ -4,15 +4,16 @@ import type { Verdict } from "@echo-trap/shared";
 import { action, internalMutation } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { TruthScanDetectionAdapter } from "./adapters/TruthScanDetectionAdapter";
-import { evaluarAudio } from "./usecases/evaluarAudio";
+import { evaluarAudio, requiereAnalisisContenido } from "./usecases/evaluarAudio";
 import { debeActivarHoneypot } from "./usecases/activarHoneypot";
 
 // Anotado explícito (en vez de dejar que TS infiera el retorno): esta action llama a
-// ctx.runAction(api.honeypot...), y `api` incluye a esta misma action — sin la
-// anotación, TS tira TS7022/TS7023 por referencia circular al inferir el tipo.
+// ctx.runAction(api.honeypot...) / ctx.runAction(api.contenido...), y `api` incluye a
+// esta misma action — sin la anotación, TS tira TS7022/TS7023 por referencia circular
+// al inferir el tipo.
 type EvaluarAudioActionResult =
   | { ok: false; reason: string }
-  | { ok: true; veredicto: Verdict; score: number; honeypotAudioBytes?: number[] };
+  | { ok: true; veredicto: Verdict; score: number; honeypotAudio?: ArrayBuffer; contentAnalysisTriggered: boolean };
 
 // CERO lógica de negocio acá: solo arma dependencias (adapters concretos), llama al
 // usecase puro y persiste el resultado (ver skill backend-senior-echotrap, regla 1).
@@ -78,7 +79,7 @@ export const evaluarAudioAction = action({
       timestamp: Date.now(),
     });
 
-    let honeypotAudioBytes: number[] | undefined;
+    let honeypotAudio: ArrayBuffer | undefined;
 
     if (debeActivarHoneypot(resultado.veredicto)) {
       await ctx.runMutation(api.alerts.crearAlerta, {
@@ -92,15 +93,32 @@ export const evaluarAudioAction = action({
       });
 
       if (honeypot.ok) {
-        honeypotAudioBytes = honeypot.audioBytes;
+        honeypotAudio = honeypot.audio;
       }
+    }
+
+    // Análisis de contenido (transcripción + MiniMax + búsqueda web): solo en
+    // amarillo/rojo, no en cada llamada verde (ver requiereAnalisisContenido).
+    // Programado con el scheduler (no un `await` directo ni un `runAction` sin esperar)
+    // porque es una señal secundaria que puede tardar hasta 30s y no debe demorar la
+    // respuesta del semáforo, que ya se resolvió arriba — y a diferencia de simplemente
+    // no esperar la promesa, `ctx.scheduler.runAfter` sí garantiza que la action corra
+    // aunque este handler ya haya retornado.
+    const contentAnalysisTriggered = requiereAnalisisContenido(resultado.veredicto);
+    if (contentAnalysisTriggered) {
+      await ctx.scheduler.runAfter(0, api.contenido.analizarContenidoAction, {
+        callId: args.callId,
+        audioBuffer: args.audioBuffer,
+        mimeType: args.mimeType,
+      });
     }
 
     return {
       ok: true as const,
       veredicto: resultado.veredicto,
       score: resultado.score,
-      honeypotAudioBytes,
+      honeypotAudio,
+      contentAnalysisTriggered,
     };
   },
 });
