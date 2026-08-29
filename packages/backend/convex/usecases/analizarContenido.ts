@@ -1,6 +1,7 @@
 import type { ContentSource, ContentVerdict } from "@echo-trap/shared";
 import type { TranscriptionPort } from "../ports/TranscriptionPort";
 import type { ContentAnalysisPort } from "../ports/ContentAnalysisPort";
+import type { AudioContentAnalysisPort } from "../ports/AudioContentAnalysisPort";
 
 // Lógica pura: no importa Convex ni ningún SDK externo, solo ports y tipos de dominio
 // (ver skill backend-senior-echotrap, regla 2).
@@ -57,5 +58,28 @@ export async function analizarContenido(
     explicacion: analisis.explicacion,
     sources: analisis.sources,
     transcript: transcripcion.texto,
+  };
+}
+
+// Variante con audio nativo (Gemini): transcribe + razona + busca en una sola llamada,
+// no necesita TranscriptionPort aparte (ver DECISIONS.md — reemplaza al trío
+// Deepgram+MiniMax+Tavily en este rol). Mismo margen de 30s que el análisis con búsqueda.
+export async function analizarContenidoConAudioNativo(
+  audioBuffer: ArrayBuffer,
+  mimeType: string,
+  analizador: AudioContentAnalysisPort
+): Promise<AnalisisContenido> {
+  const resultado = await conTimeout(analizador.analizar(audioBuffer, mimeType), 30000);
+
+  if (!resultado.ok) {
+    return { ok: false, reason: resultado.reason };
+  }
+
+  return {
+    ok: true,
+    veredicto: resultado.veredicto,
+    explicacion: resultado.explicacion,
+    sources: resultado.sources,
+    transcript: resultado.transcript,
   };
 }

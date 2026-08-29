@@ -4,10 +4,12 @@
   "version": "0.1.0",
   "scripts": {
     "dev": "convex dev",
-    "test:flow": "tsx scripts/test-flow.ts"
+    "test:flow": "tsx scripts/test-flow.ts",
+    "test:gemini": "tsx scripts/test-gemini.ts"
   },
   "dependencies": {
     "@echo-trap/shared": "workspace:*",
+    "@google/genai": "^2.19.0",
     "convex": "^1.19.0",
     "zod": "^3.24.0"
   },

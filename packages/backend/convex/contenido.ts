@@ -2,10 +2,17 @@ import { v } from "convex/values";
 import { z } from "zod";
 import { action, internalMutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { DeepgramTranscriptionAdapter } from "./adapters/DeepgramTranscriptionAdapter";
-import { MiniMaxContentAnalysisAdapter } from "./adapters/MiniMaxContentAnalysisAdapter";
-import { TavilyWebSearchAdapter } from "./adapters/TavilyWebSearchAdapter";
-import { analizarContenido } from "./usecases/analizarContenido";
+import { GeminiContentAnalysisAdapter } from "./adapters/GeminiContentAnalysisAdapter";
+import { analizarContenidoConAudioNativo } from "./usecases/analizarContenido";
+// Pipeline anterior (Deepgram STT + MiniMax razonamiento + Tavily búsqueda) — se
+// mantiene en el repo, sin usar, por si hace falta volver atrás. Ver DECISIONS.md:
+// Gemini reemplaza a este trío en el análisis de contenido porque hace transcripción +
+// razonamiento + búsqueda (google_search) en una sola llamada, verificado con audio real
+// incluyendo un caso de suplantación bancaria (BCP).
+// import { DeepgramTranscriptionAdapter } from "./adapters/DeepgramTranscriptionAdapter";
+// import { MiniMaxContentAnalysisAdapter } from "./adapters/MiniMaxContentAnalysisAdapter";
+// import { TavilyWebSearchAdapter } from "./adapters/TavilyWebSearchAdapter";
+// import { analizarContenido } from "./usecases/analizarContenido";
 
 // CERO lógica de negocio acá: solo arma dependencias (adapters concretos), llama al
 // usecase puro y persiste el resultado (ver skill backend-senior-echotrap, regla 1).
@@ -48,11 +55,9 @@ export const analizarContenidoAction = action({
       return { ok: false as const, reason: `payload inválido: ${parsed.error.message}` };
     }
 
-    const transcriptor = new DeepgramTranscriptionAdapter();
-    const buscador = new TavilyWebSearchAdapter();
-    const analizador = new MiniMaxContentAnalysisAdapter(buscador);
+    const analizador = new GeminiContentAnalysisAdapter();
 
-    const resultado = await analizarContenido(args.audioBuffer, args.mimeType, transcriptor, analizador);
+    const resultado = await analizarContenidoConAudioNativo(args.audioBuffer, args.mimeType, analizador);
 
     if (!resultado.ok || !resultado.veredicto || resultado.explicacion === undefined) {
       return { ok: false as const, reason: resultado.reason ?? "no se pudo analizar el contenido" };

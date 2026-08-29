@@ -13,23 +13,25 @@ packages/backend/convex/
 │  ├─ VoiceDetectionPort.ts     # detectar(audioBuffer) => DetectionResult
 │  ├─ VoiceSynthesisPort.ts     # sintetizar(texto, voiceId) => audioBuffer
 │  ├─ TelephonyPort.ts          # (si se usa Vapi) iniciarLlamada(), enviarRespuesta()
-│  ├─ TranscriptionPort.ts      # transcribir(audioBuffer, mimeType) => TranscriptionResult
-│  ├─ ContentAnalysisPort.ts    # analizar(transcript) => ContentAnalysisResult
-│  └─ WebSearchPort.ts          # buscar(query) => WebSearchResult — usado vía function-calling desde ContentAnalysisPort
+│  ├─ TranscriptionPort.ts      # transcribir(audioBuffer, mimeType) => TranscriptionResult — pipeline anterior, sin uso activo (ver regla 11.1)
+│  ├─ ContentAnalysisPort.ts    # analizar(transcript) => ContentAnalysisResult — pipeline anterior, sin uso activo (ver regla 11.1)
+│  ├─ WebSearchPort.ts          # buscar(query) => WebSearchResult — pipeline anterior, sin uso activo (ver regla 11.1)
+│  └─ AudioContentAnalysisPort.ts  # analizar(audioBuffer, mimeType) => resultado con transcript+veredicto+sources — ÚNICO activo para análisis de contenido (ver regla 11.1)
 ├─ adapters/          # implementaciones concretas de cada port
 │  ├─ TruthScanDetectionAdapter.ts          # ÚNICA fuente de detección ACÚSTICA de voz clonada (ver regla 10 — motor local descartado)
 │  ├─ DeepgramVoiceAdapter.ts               # síntesis de voz del honeypot (Aura TTS) — reemplaza a MiniMax, ver DECISIONS.md
-│  ├─ DeepgramTranscriptionAdapter.ts       # voz a texto (STT, /v1/listen) — paso previo al análisis de contenido
-│  ├─ MiniMaxContentAnalysisAdapter.ts      # razona sobre el TEXTO transcripto (M3 no acepta audio directo) + loop de tool-calling con WebSearchPort para fact-checking real
-│  ├─ TavilyWebSearchAdapter.ts             # búsqueda real (créditos sponsor) — Gemini quedó descartado para esto (grounding no disponible en plan gratis, ver DECISIONS.md)
+│  ├─ GeminiContentAnalysisAdapter.ts       # ÚNICO activo para análisis de contenido (ver regla 11.1) — audio nativo + razonamiento + google_search en una sola llamada
+│  ├─ DeepgramTranscriptionAdapter.ts       # pipeline anterior, sin uso activo — se deja en el repo por si hace falta volver atrás (ver regla 11.1)
+│  ├─ MiniMaxContentAnalysisAdapter.ts      # pipeline anterior, sin uso activo (ver regla 11.1)
+│  ├─ TavilyWebSearchAdapter.ts             # pipeline anterior, sin uso activo (ver regla 11.1)
 │  └─ VapiTelephonyAdapter.ts               # pendiente, fuera de alcance hasta que se confirme telefonía real
 ├─ usecases/          # lógica de negocio pura: orquesta ports, no sabe de Convex
 │  ├─ evaluarAudio.ts            # recibe buffer, usa VoiceDetectionPort, devuelve veredicto ACÚSTICO (semáforo) + requiereAnalisisContenido(veredicto)
 │  ├─ activarHoneypot.ts         # decide cuándo disparar el agente dilatorio (debeActivarHoneypot)
-│  └─ analizarContenido.ts       # transcribir → analizar (con búsqueda), devuelve veredicto de CONTENIDO (campo separado, ver DECISIONS.md)
+│  └─ analizarContenido.ts       # analizarContenidoConAudioNativo (activo, usa AudioContentAnalysisPort) + analizarContenido (pipeline anterior, sin uso activo)
 ├─ schema.ts           # tablas Convex (calls, detections, alerts, contentAnalysis)
 ├─ detections.ts        # evaluarAudioAction: evalúa y persiste; si da amarillo/rojo, encadena honeypot + alerta + análisis de contenido (ver regla 10 y 11)
-├─ contenido.ts          # análisis de contenido (transcripción + MiniMax + Tavily) — mismo patrón que detections.ts, tabla separada, no toca el semáforo acústico
+├─ contenido.ts          # análisis de contenido (Gemini, audio nativo) — mismo patrón que detections.ts, tabla separada, no toca el semáforo acústico
 ├─ honeypot.ts
 └─ alerts.ts
 
@@ -62,14 +64,18 @@ packages/backend/convex/
 11. **Análisis de CONTENIDO (transcripción + razonamiento + fact-checking web) — señal separada del semáforo acústico.** Mide QUÉ se dice en la llamada (patrones de estafa, datos verificables), no si la voz es sintética — son dos veredictos independientes que se muestran juntos en la UI, nunca se fusionan ni se pisan entre sí.
     - Se dispara SOLO cuando `requiereAnalisisContenido(veredicto)` da `true` (veredicto acústico amarillo o rojo) — nunca en verde, para no gastar tiempo ni créditos de 3 APIs en cada llamada normal.
     - `detections.ts` lo dispara con `ctx.scheduler.runAfter(0, api.contenido.analizarContenidoAction, ...)`, NUNCA con `await` directo — puede tardar hasta 30s (transcripción + razonamiento + búsqueda), y no debe demorar la respuesta del semáforo acústico que ya se resolvió.
-    - Pipeline: `DeepgramTranscriptionAdapter` (STT) → `MiniMaxContentAnalysisAdapter` (razona sobre el texto, M3 no acepta audio directo) → tool-calling hacia `TavilyWebSearchAdapter` cuando necesita verificar un dato real (nunca alucina fuentes, cita URLs reales o no cita nada).
     - Persiste en tabla separada `contentAnalysis` (no en `detections`), con query propia `obtenerAnalisisContenidoPorLlamada` para que el frontend la lea aparte del semáforo.
-    - Keys nuevas: `MINIMAX_API_KEY` (ya existía, ahora sí se usa — solo para M3/razonamiento, ver regla 9.1) y `TAVILY_API_KEY` (nueva).
+11.1. **CAMBIO DE PROVEEDOR (2026-08-29, ver DECISIONS.md): Gemini (`gemini-3.6-flash`) es el motor ÚNICO y ACTIVO del análisis de contenido — reemplaza al trío Deepgram(STT)+MiniMax(razonamiento)+Tavily(búsqueda).** Motivo: Gemini recibe el audio nativo (`inlineData`, sin transcripción previa) y tiene `google_search` como tool integrado — transcribe, razona y busca en una sola llamada, en vez de 3 proveedores encadenados. **La nota anterior de "grounding no disponible en plan gratis" quedó desmentida**: se probó con esta cuenta y el grounding funciona de verdad — confirmado con una pregunta real sobre canales oficiales del BCP contra fraude, que devolvió URLs y `webSearchQueries` reales (ver DECISIONS.md).
+    - `GeminiContentAnalysisAdapter` implementa `AudioContentAnalysisPort` (`analizar(audioBuffer, mimeType)`), NO `ContentAnalysisPort` — porque no necesita transcripción previa como puerto separado. El usecase correspondiente es `analizarContenidoConAudioNativo` (`usecases/analizarContenido.ts`), no `analizarContenido`.
+    - El pipeline anterior (`DeepgramTranscriptionAdapter`, `MiniMaxContentAnalysisAdapter`, `TavilyWebSearchAdapter`, usecase `analizarContenido`) **se deja en el repo, sin uso activo** — no se borra, para poder volver atrás cambiando una sola línea en `contenido.ts` si hiciera falta (regla 3: cambiar de proveedor es swap de adapter, no reescritura).
+    - **Bug de runtime real encontrado y corregido**: Convex corre las actions en un runtime tipo edge, sin `Buffer` de Node — `GeminiContentAnalysisAdapter` codifica el audio a base64 a mano con `btoa` en trozos, no con `Buffer.from(...).toString("base64")` (eso tira `Buffer is not defined` en producción).
+    - El prompt de `GeminiContentAnalysisAdapter` está orientado a vishing en general y a suplantación bancaria en particular (verificado con un caso de prueba de "premio no solicitado" tipo el guion real usado contra clientes del BCP), pide JSON estricto con `transcript`, `veredicto`, `explicacion`, `sources`.
+    - Keys: `GEMINI_API_KEY` (nueva). `MINIMAX_API_KEY` y `TAVILY_API_KEY` quedan seteadas en Convex pero sin código que las use mientras el pipeline anterior no esté activo.
 
 ## Descartado (no reintroducir sin que el humano lo pida explícitamente)
 - Motor local de detección (Hugging Face `wav2vec2`, microservicio Python, `ffmpeg`, túnel `cloudflared`) — ver regla 10.
-- MiniMax como proveedor de voz del honeypot — ver regla 9.1 (Deepgram lo reemplazó). MiniMax SÍ se usa para razonamiento de texto (regla 11), esto no es una reintroducción del uso descartado.
-- Gemini como motor de búsqueda web para el fact-checking — grounding no disponible en su plan gratis, se usa Tavily en su lugar (ver regla 11).
+- MiniMax como proveedor de voz del honeypot — ver regla 9.1 (Deepgram lo reemplazó). MiniMax SÍ se usa para razonamiento de texto en el pipeline anterior de análisis de contenido (sin uso activo, ver regla 11.1), esto no es una reintroducción del uso descartado.
+- Pipeline Deepgram(STT)+MiniMax(razonamiento)+Tavily(búsqueda) para análisis de contenido — reemplazado por Gemini, ver regla 11.1. No se borró, queda como fallback manual.
 
 ## Fuera de alcance para este hackathon (NO construir)
 - Telefonía real entrante (Vapi con número público) salvo que el humano lo pida explícitamente tras validar la demo de 2 teléfonos.
