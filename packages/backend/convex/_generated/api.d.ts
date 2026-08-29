@@ -12,6 +12,7 @@ import type * as adapters_DeepgramVoiceAdapter from "../adapters/DeepgramVoiceAd
 import type * as adapters_LocalWav2Vec2DetectionAdapter from "../adapters/LocalWav2Vec2DetectionAdapter.js";
 import type * as adapters_TruthScanDetectionAdapter from "../adapters/TruthScanDetectionAdapter.js";
 import type * as alerts from "../alerts.js";
+import type * as calls from "../calls.js";
 import type * as detections from "../detections.js";
 import type * as domain_thresholds from "../domain/thresholds.js";
 import type * as honeypot from "../honeypot.js";
@@ -32,6 +33,7 @@ declare const fullApi: ApiFromModules<{
   "adapters/LocalWav2Vec2DetectionAdapter": typeof adapters_LocalWav2Vec2DetectionAdapter;
   "adapters/TruthScanDetectionAdapter": typeof adapters_TruthScanDetectionAdapter;
   alerts: typeof alerts;
+  calls: typeof calls;
   detections: typeof detections;
   "domain/thresholds": typeof domain_thresholds;
   honeypot: typeof honeypot;
