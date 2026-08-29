@@ -14,8 +14,7 @@ packages/backend/convex/
 │  ├─ VoiceSynthesisPort.ts     # sintetizar(texto, voiceId) => audioBuffer
 │  └─ TelephonyPort.ts          # (si se usa Vapi) iniciarLlamada(), enviarRespuesta()
 ├─ adapters/          # implementaciones concretas de cada port
-│  ├─ TruthScanDetectionAdapter.ts          # motor remoto confirmado, señal secundaria no bloqueante
-│  ├─ LocalWav2Vec2DetectionAdapter.ts      # llama por HTTP al microservicio Python (sección 8) — mismo contrato VoiceDetectionPort, fuente PRIMARIA del semáforo
+│  ├─ TruthScanDetectionAdapter.ts          # ÚNICO motor de detección (ver regla 10) — implementa VoiceDetectionPort
 │  ├─ DeepgramVoiceAdapter.ts               # síntesis de voz del honeypot (Aura TTS) — reemplaza a MiniMax, ver DECISIONS.md
 │  └─ VapiTelephonyAdapter.ts               # pendiente, fuera de alcance hasta que se confirme telefonía real
 ├─ usecases/          # lógica de negocio pura: orquesta ports, no sabe de Convex
@@ -38,19 +37,22 @@ packages/backend/convex/
 9. **NO se implementa login/autenticación de usuarios en este hackathon.** Clerk no se activa. Si se necesita guardar un "contacto de confianza" para las alertas, se guarda sin usuario asociado (campo libre en la UI, persistido en Convex).
 9.1. **Voz del honeypot: Deepgram (Aura TTS), no MiniMax.** MiniMax queda fuera del código en vivo — solo se usa manualmente/offline para generar el clip de prueba de voz clonada (el ataque simulado), eso no es parte de este repo. `DeepgramVoiceAdapter` implementa `VoiceSynthesisPort` con la key `DEEPGRAM_API_KEY` (una sola key, sin group id ni voice model id).
 9.2. **Alertas sin n8n por ahora.** El MVP usa un popup en la UI: `alerts.ts` solo persiste en la tabla `alerts` (mutation `crearAlerta`) y expone una query para que el frontend la lea reactivo. El webhook de n8n es una skill/feature futura, se implementa SOLO si el humano lo pide explícitamente — no asumir que hay que integrarlo todavía.
-10. **Motor remoto confirmado: TruthScan** (no se evalúan alternativas de pago como Resemble o AI or Not — decisión del equipo por límite de créditos). Reality Defender queda eliminado del flujo por completo (>10min de latencia en pruebas), no se implementa su adapter. `evaluarAudio.ts` **nunca debe esperar indefinidamente a ningún motor remoto**.
-10.1. **CAMBIO DE ARQUITECTURA (2026-08-29, ver DECISIONS.md): TruthScan pasa a definir el VEREDICTO FINAL, no es solo un bono.** Calibración real con audio del equipo mostró que el motor local (wav2vec2) da falsos positivos frecuentes con voces reales, mientras que TruthScan clasificó correctamente todos los casos probados. A cambio, TruthScan es lento en la práctica: su API real es un flujo de 4 pasos (URL pre-firmada → subir audio → `/detect` → sondear `/query`) que en pruebas tardó **~7s de punta a punta**, no los <1s que se podía asumir de una API síncrona simple.
-    - **Motor local sigue respondiendo primero (margen 3s)** — define un semáforo **PROVISORIO** que se persiste en Convex apenas llega, para que el usuario vea algo rápido.
-    - **TruthScan corre en paralelo desde el arranque, con margen ampliado a 9s** — cuando responde a tiempo, define el semáforo **FINAL** (pisa al provisorio). Si no llega a tiempo, el provisorio del motor local se confirma como final sin más espera.
-    - Implementación real en `detections.ts`: arrancar `localPromise` y `remotoPromise` en paralelo (ambas envueltas en `conTimeout` de `usecases/evaluarAudio.ts`), esperar `local` primero y persistir el veredicto provisorio (`insertarDeteccion`, source `"local"`), después esperar `remoto` (ya viene corriendo) y persistir el veredicto final (source `"truthscan"` si llegó a tiempo, `"local-final"` si no). El frontend lee `listarDeteccionesPorLlamada` reactivo — la fila más reciente por `timestamp` es siempre la que corresponde mostrar.
-    - Umbrales en `domain/thresholds.ts`, sin cambios tras la calibración inicial:
+10. **CAMBIO DE ARQUITECTURA (2026-08-29, ver DECISIONS.md): TruthScan es el ÚNICO motor de detección.** Se descartó por completo el motor local de Hugging Face (`wav2vec2`, corría como microservicio Python aparte) — daba falsos positivos frecuentes con voces reales del equipo en pruebas reales (99.99% "fake" en voz real limpia, sin explicación de bug de código). TruthScan clasificó correctamente todos los casos probados. Ya no hay `services/detection-py/`, ni `ffmpeg`, ni túnel de `cloudflared` — todo eso se elimina del proyecto. Reality Defender también queda eliminado del flujo (>10min de latencia en pruebas de antes), no se implementa su adapter.
+    - `evaluarAudio.ts` **nunca debe esperar indefinidamente** a TruthScan — se envuelve con `conTimeout` (`usecases/evaluarAudio.ts`) con margen de **12s** (su flujo real de 4 pasos — presigned URL → subir audio → `/detect` → sondear `/query` — tardó ~7s de punta a punta en pruebas, se deja margen extra).
+    - Si TruthScan no responde a tiempo o falla, **no hay veredicto** — se informa el error, nunca se inventa un resultado ni se cae a un motor de respaldo (ya no existe uno).
+    - `detections.ts` hace una sola llamada, una sola persistencia (`insertarDeteccion`, source `"truthscan"`). El frontend lee `listarDeteccionesPorLlamada` reactivo.
+    - Umbrales en `domain/thresholds.ts`, calibrados con audio real:
       ```ts
       export const SCAM_THRESHOLD = {
-        HIGH_CONFIDENCE: 70,
-        SUSPICIOUS: 45,
+        HIGH_CONFIDENCE: 70, // score de TruthScan que da rojo directo
+        SUSPICIOUS: 45,      // score de TruthScan que ya amerita amarillo
       };
       ```
-      Confirmados con audio real: voz real del equipo (WAV sin comprimir) → score ~0, voz clonada (MiniMax) → score ~49, ambos casos calzan bien contra `SUSPICIOUS: 45`. **Usar siempre WAV/M4A para grabar pruebas, nunca MP3** — la compresión lossy generaba falsos positivos masivos (99.99% "fake" para cualquier audio, incluso real) en el motor local.
+      TruthScan acepta WAV, MP3, M4A, FLAC, OGG, MP4 directamente (no hace falta preocuparse por compresión como con el motor local descartado).
+
+## Descartado (no reintroducir sin que el humano lo pida explícitamente)
+- Motor local de detección (Hugging Face `wav2vec2`, microservicio Python, `ffmpeg`, túnel `cloudflared`) — ver regla 10.
+- MiniMax como proveedor de voz del honeypot — ver regla 9.1 (Deepgram lo reemplazó).
 
 ## Fuera de alcance para este hackathon (NO construir)
 - Telefonía real entrante (Vapi con número público) salvo que el humano lo pida explícitamente tras validar la demo de 2 teléfonos.

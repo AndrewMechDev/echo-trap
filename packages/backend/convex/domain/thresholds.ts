@@ -1,6 +1,7 @@
-// Umbrales de veredicto del semáforo (ver brief sección 4, regla 10).
-// Punto de partida — el humano los recalibra con pruebas de audio real del equipo.
+// Umbrales de veredicto del semáforo. Motor único: TruthScan (ver DECISIONS.md,
+// 2026-08-29 — se descartó el motor local de Hugging Face por falsos positivos).
+// Calibrados con audio real del equipo: voz real ~0, voz clonada ~87-99.
 export const SCAM_THRESHOLD = {
-  HIGH_CONFIDENCE: 70, // ambos motores de acuerdo en "sintética" (remoto respondió a tiempo)
-  SUSPICIOUS: 45, // solo el motor local respondió, o solo uno marca
+  HIGH_CONFIDENCE: 70, // score de TruthScan que da rojo directo
+  SUSPICIOUS: 45, // score de TruthScan que ya amerita amarillo
 };

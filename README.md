@@ -2,13 +2,12 @@
 
 PWA que detecta en tiempo real si una voz es clonada por IA y activa una capa honeypot que dilata al estafador y alerta al usuario. Proyecto del hackathon The Next Craft (Crafter Station), Track 02 — Out of the Box.
 
-Contexto completo del proyecto, arquitectura y decisiones: ver [`CLAUDE.md`](./CLAUDE.md) y [`DECISIONS.md`](./DECISIONS.md).
+Contexto completo del proyecto, arquitectura y decisiones: ver [`CLAUDE.md`](./CLAUDE.md) y [`DECISIONS.md`](./DECISIONS.md) (esta última tiene el historial de cambios respecto al brief original, incluido el paso a motor único TruthScan).
 
 ## Requisitos
 
 - **pnpm 11.24.0** (obligatorio, no usar npm/yarn)
 - **Node.js** (via `fnm` o similar)
-- **Python 3.11** (`py -3.11` en Windows) — solo para `services/detection-py`
 
 ## Estructura
 
@@ -16,8 +15,9 @@ Contexto completo del proyecto, arquitectura y decisiones: ver [`CLAUDE.md`](./C
 apps/web/                  Frontend — Next.js 15 + React 19 (PWA)
 packages/backend/          Backend — Convex (funciones, adapters, schema)
 packages/shared/           Tipos y schemas zod compartidos
-services/detection-py/     Microservicio Python — detección local (wav2vec2, CPU)
 ```
+
+Detección de voz clonada: **TruthScan** (motor único, vía API — ver `DECISIONS.md`). Ya no hay microservicio Python local.
 
 ## Setup inicial
 
@@ -25,7 +25,7 @@ services/detection-py/     Microservicio Python — detección local (wav2vec2, 
 pnpm install
 ```
 
-Copiar los `.env.example` a `.env`/`.env.local` en `apps/web`, `packages/backend` y `services/detection-py`, completando las keys que ya se tengan (ver `CLAUDE.md` sección 8).
+Copiar los `.env.example` a `.env`/`.env.local` en `apps/web` y `packages/backend`, completando las keys que ya se tengan (ver `CLAUDE.md` sección 8, y `DECISIONS.md` para las variables que cambiaron desde entonces).
 
 ## Levantar el proyecto
 
@@ -47,33 +47,13 @@ Ambos juntos:
 pnpm dev
 ```
 
-## Levantar el microservicio de detección (Python, fuera de pnpm)
-
-**Windows (PowerShell):**
-
-```powershell
-cd services/detection-py
-py -3.11 -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install torch --index-url https://download.pytorch.org/whl/cpu
-pip install -r requirements.txt
-$env:INTERNAL_API_KEY = "valor-compartido-con-convex"
-uvicorn main:app --reload --port 8000
-```
-
-**macOS/Linux:**
+## Probar el flujo sin frontend armado
 
 ```bash
-cd services/detection-py
-python3.11 -m venv .venv
-source .venv/bin/activate
-pip install torch --index-url https://download.pytorch.org/whl/cpu
-pip install -r requirements.txt
-export INTERNAL_API_KEY="valor-compartido-con-convex"
-uvicorn main:app --reload --port 8000
+pnpm --filter @echo-trap/backend test:flow <ruta-al-audio> [contactoConfianza]
 ```
 
-Verificar que está despierto: `GET http://localhost:8000/health` debe responder `{"status": "ok"}`.
+Corre el flujo completo (crear llamada → evaluar audio con TruthScan → persistir detección → honeypot/alerta si da rojo) contra el deployment real de Convex, imprime los resultados y tiempos en la terminal. También se puede ver todo en vivo desde el [dashboard de Convex](https://dashboard.convex.dev) (pestañas Data y Functions).
 
 ## Ramas
 

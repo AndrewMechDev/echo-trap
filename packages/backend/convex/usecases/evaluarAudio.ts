@@ -5,14 +5,12 @@ import { SCAM_THRESHOLD } from "../domain/thresholds";
 // Lógica pura: no importa Convex ni ningún SDK externo, solo tipos de dominio
 // (ver skill backend-senior-echotrap, regla 2).
 
-// Cambio de arquitectura (2026-08-29, ver DECISIONS.md): validado con audio real que
-// TruthScan es bastante más preciso que el motor local en este proyecto (el modelo local
-// dio falsos positivos con voces reales del equipo). TruthScan pasa a ser la fuente que
-// define el VEREDICTO FINAL; el motor local sigue respondiendo primero y rápido (1-3s)
-// para mostrar un semáforo PROVISORIO mientras se espera la confirmación.
-
-// Envuelve una promesa con un límite de tiempo duro — igual que antes, nunca esperamos
-// indefinidamente a ningún motor remoto (ver hallazgo de Reality Defender, >10min).
+// Motor único: TruthScan (ver DECISIONS.md, 2026-08-29 — se descartó el motor local de
+// Hugging Face porque daba falsos positivos con voces reales en pruebas del equipo).
+// Se mantiene el timeout duro igual que antes (ver hallazgo de Reality Defender, >10min)
+// aunque ahora no haya un segundo motor de respaldo: si TruthScan no responde a tiempo,
+// no hay veredicto — se le avisa al usuario que la detección no pudo completarse, nunca
+// se inventa un resultado.
 export async function conTimeout<T>(
   promesa: Promise<T>,
   ms: number
@@ -24,43 +22,29 @@ export async function conTimeout<T>(
 }
 
 function veredictoDesdeScore(score: number): Verdict {
-  if (score >= SCAM_THRESHOLD.SUSPICIOUS) return "rojo";
-  if (score >= SCAM_THRESHOLD.SUSPICIOUS / 2) return "amarillo";
+  if (score >= SCAM_THRESHOLD.HIGH_CONFIDENCE) return "rojo";
+  if (score >= SCAM_THRESHOLD.SUSPICIOUS) return "amarillo";
   return "verde";
 }
 
-// Semáforo PROVISORIO: se calcula apenas responde el motor local, mientras se sigue
-// esperando a TruthScan en paralelo (con más margen, ver evaluarAudioFinal).
-export function calcularVeredictoProvisional(local: DetectionResult): { veredicto: Verdict; scoreLocal: number } | null {
-  if (!local.ok) return null;
-  return { veredicto: veredictoDesdeScore(local.score), scoreLocal: local.score };
+export interface Veredicto {
+  ok: boolean;
+  veredicto?: Verdict;
+  score?: number;
+  reason?: string;
 }
 
-export interface VeredictoFinal {
-  veredicto: Verdict;
-  scoreLocal: number;
-  scoreTruthScan?: number;
-  truthScanLlegoATiempo: boolean;
-}
-
-// Semáforo FINAL: si TruthScan respondió a tiempo, es la fuente que decide (más precisa
-// según la calibración real del equipo). Si TruthScan no llegó o falló, el veredicto
-// final queda confirmado con el del motor local (el provisorio se vuelve definitivo).
-export function calcularVeredictoFinal(local: DetectionResult, remoto: DetectionResult): VeredictoFinal | null {
-  if (!local.ok) return null;
-
-  if (remoto.ok) {
-    return {
-      veredicto: veredictoDesdeScore(remoto.score),
-      scoreLocal: local.score,
-      scoreTruthScan: remoto.score,
-      truthScanLlegoATiempo: true,
-    };
+// Evalúa el audio con el único motor de detección (TruthScan, inyectado como
+// VoiceDetectionPort). El caller (detections.ts) es responsable de aplicar el timeout
+// duro con conTimeout antes de llamar acá, o de envolver la llamada al detector.
+export function evaluarAudio(resultado: DetectionResult): Veredicto {
+  if (!resultado.ok) {
+    return { ok: false, reason: resultado.reason };
   }
 
   return {
-    veredicto: veredictoDesdeScore(local.score),
-    scoreLocal: local.score,
-    truthScanLlegoATiempo: false,
+    ok: true,
+    veredicto: veredictoDesdeScore(resultado.score),
+    score: resultado.score,
   };
 }

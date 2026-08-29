@@ -9,7 +9,6 @@
  */
 
 import type * as adapters_DeepgramVoiceAdapter from "../adapters/DeepgramVoiceAdapter.js";
-import type * as adapters_LocalWav2Vec2DetectionAdapter from "../adapters/LocalWav2Vec2DetectionAdapter.js";
 import type * as adapters_TruthScanDetectionAdapter from "../adapters/TruthScanDetectionAdapter.js";
 import type * as alerts from "../alerts.js";
 import type * as calls from "../calls.js";
@@ -30,7 +29,6 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   "adapters/DeepgramVoiceAdapter": typeof adapters_DeepgramVoiceAdapter;
-  "adapters/LocalWav2Vec2DetectionAdapter": typeof adapters_LocalWav2Vec2DetectionAdapter;
   "adapters/TruthScanDetectionAdapter": typeof adapters_TruthScanDetectionAdapter;
   alerts: typeof alerts;
   calls: typeof calls;
