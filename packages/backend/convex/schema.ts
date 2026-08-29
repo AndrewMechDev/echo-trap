@@ -5,7 +5,7 @@ import { v } from "convex/values";
 export default defineSchema({
   calls: defineTable({
     startedAt: v.number(),
-    contactoConfianza: v.optional(v.boolean()),
+    contactoConfianza: v.optional(v.string()),
   }),
 
   detections: defineTable({

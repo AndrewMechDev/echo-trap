@@ -16,9 +16,8 @@ packages/backend/convex/
 ├─ adapters/          # implementaciones concretas de cada port
 │  ├─ TruthScanDetectionAdapter.ts          # motor remoto confirmado, señal secundaria no bloqueante
 │  ├─ LocalWav2Vec2DetectionAdapter.ts      # llama por HTTP al microservicio Python (sección 8) — mismo contrato VoiceDetectionPort, fuente PRIMARIA del semáforo
-│  ├─ MiniMaxVoiceAdapter.ts
-│  ├─ ElevenLabsVoiceAdapter.ts
-│  └─ VapiTelephonyAdapter.ts
+│  ├─ DeepgramVoiceAdapter.ts               # síntesis de voz del honeypot (Aura TTS) — reemplaza a MiniMax, ver DECISIONS.md
+│  └─ VapiTelephonyAdapter.ts               # pendiente, fuera de alcance hasta que se confirme telefonía real
 ├─ usecases/          # lógica de negocio pura: orquesta ports, no sabe de Convex
 │  ├─ evaluarAudio.ts            # recibe buffer, usa VoiceDetectionPort, devuelve veredicto
 │  └─ activarHoneypot.ts         # decide cuándo disparar el agente dilatorio
@@ -37,6 +36,8 @@ packages/backend/convex/
 7. Nombrar archivos y funciones en inglés (convención de código), pero comentarios y mensajes de commit en español.
 8. No agregar autenticación de roles compleja, paneles admin, ni features fuera del MVP definido en el brief del hackathon — si algo no está en el MVP, no se construye (ver sección "Fuera de alcance" abajo).
 9. **NO se implementa login/autenticación de usuarios en este hackathon.** Clerk no se activa. Si se necesita guardar un "contacto de confianza" para las alertas, se guarda sin usuario asociado (campo libre en la UI, persistido en Convex).
+9.1. **Voz del honeypot: Deepgram (Aura TTS), no MiniMax.** MiniMax queda fuera del código en vivo — solo se usa manualmente/offline para generar el clip de prueba de voz clonada (el ataque simulado), eso no es parte de este repo. `DeepgramVoiceAdapter` implementa `VoiceSynthesisPort` con la key `DEEPGRAM_API_KEY` (una sola key, sin group id ni voice model id).
+9.2. **Alertas sin n8n por ahora.** El MVP usa un popup en la UI: `alerts.ts` solo persiste en la tabla `alerts` (mutation `crearAlerta`) y expone una query para que el frontend la lea reactivo. El webhook de n8n es una skill/feature futura, se implementa SOLO si el humano lo pide explícitamente — no asumir que hay que integrarlo todavía.
 10. **Motor remoto confirmado: TruthScan** (no se evalúan alternativas de pago como Resemble o AI or Not — decisión del equipo por límite de créditos). Reality Defender queda eliminado del flujo por completo (>10min de latencia en pruebas), no se implementa su adapter. `evaluarAudio.ts` **nunca debe esperar indefinidamente a ningún motor remoto**:
     - **Motor local (`LocalWav2Vec2DetectionAdapter`) es la fuente principal y rápida** del semáforo — responde en <1-2s, determina el color inicial que ve el usuario.
     - **TruthScan es una señal secundaria de refuerzo, no bloqueante**: timeout duro y corto.
