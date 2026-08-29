@@ -2,7 +2,6 @@ interface AlertPopupProps {
   alert: { tipo: string; timestamp: number } | null;
   onClose: () => void;
 }
-
 export function AlertPopup({ alert, onClose }: AlertPopupProps) {
   if (!alert) return null;
 
@@ -20,4 +19,3 @@ export function AlertPopup({ alert, onClose }: AlertPopupProps) {
     </aside>
   );
 }
-

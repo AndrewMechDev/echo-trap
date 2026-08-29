@@ -7,7 +7,6 @@ interface ContentAnalysis {
   transcript: string;
   timestamp: number;
 }
-
 const verdictLabels: Record<ContentVerdict, string> = {
   verdadera: "Contenido aparentemente verdadero",
   sospechosa_de_estafa: "Contenido sospechoso de estafa",
@@ -72,4 +71,3 @@ export function ContentAnalysisPanel({ analysis }: { analysis?: ContentAnalysis 
     </section>
   );
 }
-
