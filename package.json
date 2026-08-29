@@ -5,8 +5,7 @@
   "scripts": {
     "dev": "concurrently -n backend,web -c blue,green \"pnpm --filter @echo-trap/backend dev\" \"pnpm --filter @echo-trap/web dev\"",
     "dev:backend": "pnpm --filter @echo-trap/backend dev",
-    "dev:web": "pnpm --filter @echo-trap/web dev",
-    "dev:detector": "echo 'Correr manualmente: cd services/detection-py && source .venv/bin/activate && uvicorn main:app --reload --port 8000'"
+    "dev:web": "pnpm --filter @echo-trap/web dev"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",

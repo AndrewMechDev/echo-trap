@@ -1,5 +1,7 @@
 # EchoTrap — Brief para Claude Code
 
+> ⚠️ **ESTADO ACTUAL DEL PROYECTO: ver `DECISIONS.md` primero.** Este brief es el documento ORIGINAL (Fase 0) y quedó desactualizado en varios puntos — el más importante: **ya no existe el microservicio Python local** (secciones 6, 6.1, 7, 9 de abajo lo describen, pero fue descartado por completo el 2026-08-29 en favor de TruthScan como motor único). `DECISIONS.md` es la fuente de verdad actual; ante cualquier contradicción con lo que sigue en este archivo, gana `DECISIONS.md`.
+
 > **Cómo usar este archivo:** ya están dentro de la carpeta `echo-trap/` (repo remoto ya creado, falta inicializar git local — ver Fase 0, paso 0). Guarda este archivo como `CLAUDE.md` en la raíz para que Claude Code lo lea automáticamente en cada sesión, y pégalo también como primer mensaje. Pide explícitamente: *"Lee este brief completo y ejecútalo en el orden indicado en la Fase 0. No avances de fase sin confirmar conmigo."*
 
 ---

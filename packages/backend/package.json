@@ -3,13 +3,19 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "dev": "convex dev"
+    "dev": "convex dev",
+    "test:flow": "tsx scripts/test-flow.ts",
+    "test:gemini": "tsx scripts/test-gemini.ts"
   },
   "dependencies": {
+    "@echo-trap/shared": "workspace:*",
+    "@google/genai": "^2.19.0",
     "convex": "^1.19.0",
-    "@echo-trap/shared": "workspace:*"
+    "zod": "^3.24.0"
   },
   "devDependencies": {
+    "@types/node": "^22.20.1",
+    "tsx": "^4.23.12",
     "typescript": "^5.7.0"
   }
 }

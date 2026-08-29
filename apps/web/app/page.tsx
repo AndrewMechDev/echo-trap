@@ -1,8 +1,5 @@
-// Página placeholder — se reemplaza en la fase de frontend (semáforo, timeline, panel honeypot).
+import { CallExperience } from "../components/CallExperience";
+
 export default function HomePage() {
-  return (
-    <main>
-      <h1>EchoTrap — en construcción</h1>
-    </main>
-  );
+  return <CallExperience />;
 }

@@ -6,3 +6,7 @@
 node_modules/
 .next/
 .atl/
+.codegraph/
+.claude/scheduled_tasks.lock
+test-audio/*/*
+!test-audio/*/.gitkeep

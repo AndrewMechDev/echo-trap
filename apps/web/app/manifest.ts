@@ -8,8 +8,16 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Detector de estafas telefónicas por voz clonada con IA",
     start_url: "/",
     display: "standalone",
-    background_color: "#ffffff",
-    theme_color: "#000000",
-    icons: [],
+    background_color: "#0a0a0a",
+    theme_color: "#0a0a0a",
+    orientation: "portrait",
+    icons: [
+      {
+        src: "/icon.svg",
+        sizes: "any",
+        type: "image/svg+xml",
+        purpose: "any",
+      },
+    ],
   };
 }
