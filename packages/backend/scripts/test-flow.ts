@@ -44,19 +44,24 @@ async function main() {
   const detecciones = await client.query(api.detections.listarDeteccionesPorLlamada, { callId });
   console.table(detecciones);
 
-  // evaluarAudioAction ya encadena honeypot + alerta internamente cuando el veredicto
-  // es "rojo" — no hace falta (ni conviene) dispararlos de nuevo acá.
+  // evaluarAudioAction ya encadena honeypot + alerta + análisis de contenido
+  // internamente cuando corresponde — no hace falta (ni conviene) dispararlos de nuevo.
   if (resultado.ok && resultado.veredicto === "rojo") {
     console.log(`\n🍯 Honeypot encadenado por el backend:`);
     console.log(
-      resultado.honeypotAudioBytes
-        ? `   audio dilatorio generado (${resultado.honeypotAudioBytes.length} bytes)`
+      resultado.honeypotAudio
+        ? `   audio dilatorio generado (${resultado.honeypotAudio.byteLength} bytes)`
         : `   no se generó audio (revisar reason en el resultado de arriba)`
     );
 
     console.log(`\n🚨 Alertas persistidas para esta llamada:`);
     const alertas = await client.query(api.alerts.listarAlertasPorLlamada, { callId });
     console.table(alertas);
+  }
+
+  if (resultado.ok && resultado.contentAnalysisTriggered) {
+    console.log(`\n🕵️  Análisis de contenido disparado (corre en background, puede tardar hasta 30s)...`);
+    console.log(`   Consultá manualmente con: api.contenido.obtenerAnalisisContenidoPorLlamada({ callId: "${callId}" })`);
   }
 }
 
