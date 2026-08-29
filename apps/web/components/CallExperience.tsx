@@ -5,6 +5,7 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { AlertPopup } from "./AlertPopup";
 import { ContentAnalysisPanel } from "./ContentAnalysisPanel";
 import { EchoTrapPanel } from "./EchoTrapPanel";
+import { LiveFeed } from "./LiveFeed";
 import { Semaphore } from "./Semaphore";
 import { Timeline } from "./Timeline";
 import { api } from "../lib/convex/api";
@@ -199,6 +200,8 @@ function LiveCall({ callId, onEnd }: { callId: CallId; onEnd: () => void }) {
             </button>
             <p>{isRecording ? "Se envía un segmento cada 5 segundos cuando hay voz." : "El micrófono permanece apagado hasta que lo actives."}</p>
           </div>
+
+          <LiveFeed analyses={contentAnalyses ?? []} />
 
           <Timeline detections={detections ?? []} />
         </section>

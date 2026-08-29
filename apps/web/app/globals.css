@@ -260,8 +260,25 @@ a { color: var(--orange); }
 .timeline__item span { margin-top: 3px; color: var(--muted); font-size: 11px; }
 .timeline__item b { color: var(--ink); font-size: 12px; }
 
-.content-panel--sospechosa_de_estafa { border-color: rgba(255, 200, 87, .35); }
-.content-panel--enganosa { border-color: rgba(255, 107, 74, .45); }
+.live-feed__list { display: grid; gap: var(--space-3); margin: 18px 0 0; padding: 0; list-style: none; max-height: 360px; overflow-y: auto; }
+.live-feed__item { padding: 12px 14px; border: 1px solid var(--line); border-left: 3px solid var(--muted); border-radius: 12px; background: #101010; }
+.live-feed__item--verdadera { border-left-color: var(--green); }
+.live-feed__item--sospechosa_de_estafa { border-left-color: var(--red); }
+.live-feed__item--enganosa { border-left-color: var(--yellow); }
+.live-feed__item--inconclusa { border-left-color: var(--muted); }
+.live-feed__row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.live-feed__badge { border-radius: 999px; padding: 2px 9px; background: rgba(255, 255, 255, .06); color: var(--ink); font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.live-feed__item--verdadera .live-feed__badge { color: var(--green); }
+.live-feed__item--sospechosa_de_estafa .live-feed__badge { color: var(--red); }
+.live-feed__item--enganosa .live-feed__badge { color: var(--yellow); }
+.live-feed__item--inconclusa .live-feed__badge { color: var(--muted); }
+.live-feed__time { color: var(--muted); font-size: 11px; }
+.live-feed__line { margin: 4px 0 0; color: var(--ink); font-size: 13px; line-height: 1.45; }
+.live-feed__line strong { font-weight: 650; }
+.live-feed__line--muted { color: var(--muted); }
+
+.content-panel--sospechosa_de_estafa { border-color: rgba(255, 107, 74, .45); }
+.content-panel--enganosa { border-color: rgba(255, 200, 87, .35); }
 .content-panel--verdadera { border-color: rgba(116, 217, 154, .25); }
 .content-panel__explanation { margin: 20px 0 0; color: var(--ink); font-size: 14px; line-height: 1.55; }
 .transcript, .sources { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
