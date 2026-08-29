@@ -12,7 +12,6 @@ export interface AudioChunk {
   mimeType: "audio/wav";
   duracionMs: number;
 }
-
 type ChunkListener = (chunk: AudioChunk) => Promise<void> | void;
 type ErrorListener = (error: Error) => void;
 
@@ -189,4 +188,3 @@ export class AudioCapture {
     this.stopping = false;
   }
 }
-
