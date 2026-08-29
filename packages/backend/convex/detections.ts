@@ -1,3 +1,120 @@
-// TODO fase 1
-// Las mutations/actions de detección solo llamarán a usecases/evaluarAudio.ts,
-// nunca contendrán lógica de negocio propia (ver skill backend-senior-echotrap).
+import { v } from "convex/values";
+import { z } from "zod";
+import type { Verdict } from "@echo-trap/shared";
+import { action, internalMutation, query } from "./_generated/server";
+import { api, internal } from "./_generated/api";
+import { TruthScanDetectionAdapter } from "./adapters/TruthScanDetectionAdapter";
+import { evaluarAudio } from "./usecases/evaluarAudio";
+import { debeActivarHoneypot } from "./usecases/activarHoneypot";
+
+// Anotado explícito (en vez de dejar que TS infiera el retorno): esta action llama a
+// ctx.runAction(api.honeypot...), y `api` incluye a esta misma action — sin la
+// anotación, TS tira TS7022/TS7023 por referencia circular al inferir el tipo.
+type EvaluarAudioActionResult =
+  | { ok: false; reason: string }
+  | { ok: true; veredicto: Verdict; score: number; honeypotAudioBytes?: number[] };
+
+// CERO lógica de negocio acá: solo arma dependencias (adapters concretos), llama al
+// usecase puro y persiste el resultado (ver skill backend-senior-echotrap, regla 1).
+// La decisión de activar el honeypot vive en el usecase (debeActivarHoneypot); acá solo
+// se dispara la cadena detección → honeypot → alerta cuando corresponde.
+
+const EvaluarAudioArgsSchema = z.object({
+  callId: z.string(),
+  mimeType: z.string(),
+  duracionMs: z.number().positive(),
+});
+
+// Mutation interna para persistir un resultado de detección — las actions no tienen
+// acceso directo a ctx.db, necesitan pasar por ctx.runMutation.
+export const insertarDeteccion = internalMutation({
+  args: {
+    callId: v.id("calls"),
+    source: v.string(),
+    score: v.number(),
+    veredicto: v.string(),
+    timestamp: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("detections", args);
+  },
+});
+
+// Query reactiva: el frontend la usa con `useQuery` para mostrar el semáforo.
+export const listarDeteccionesPorLlamada = query({
+  args: {
+    callId: v.id("calls"),
+  },
+  handler: async (ctx, args) => {
+    const detecciones = await ctx.db
+      .query("detections")
+      .filter((q) => q.eq(q.field("callId"), args.callId))
+      .collect();
+
+    return detecciones.sort((a, b) => a.timestamp - b.timestamp);
+  },
+});
+
+// Action pública: recibe el audio de una llamada, corre la detección contra TruthScan
+// (única fuente, ver DECISIONS.md) y persiste el resultado en la tabla `detections`.
+// Si el veredicto es "rojo", encadena la activación del honeypot y la alerta.
+export const evaluarAudioAction = action({
+  args: {
+    callId: v.id("calls"),
+    audioBuffer: v.bytes(),
+    mimeType: v.string(),
+    duracionMs: v.number(),
+  },
+  handler: async (ctx, args): Promise<EvaluarAudioActionResult> => {
+    const parsed = EvaluarAudioArgsSchema.safeParse({
+      callId: args.callId,
+      mimeType: args.mimeType,
+      duracionMs: args.duracionMs,
+    });
+
+    if (!parsed.success) {
+      return { ok: false as const, reason: `payload inválido: ${parsed.error.message}` };
+    }
+
+    const detector = new TruthScanDetectionAdapter();
+
+    const resultado = await evaluarAudio(args.audioBuffer, detector);
+
+    if (!resultado.ok || !resultado.veredicto || resultado.score === undefined) {
+      return { ok: false as const, reason: resultado.reason ?? "no se pudo evaluar el audio" };
+    }
+
+    await ctx.runMutation(internal.detections.insertarDeteccion, {
+      callId: args.callId,
+      source: "truthscan",
+      score: resultado.score,
+      veredicto: resultado.veredicto,
+      timestamp: Date.now(),
+    });
+
+    let honeypotAudioBytes: number[] | undefined;
+
+    if (debeActivarHoneypot(resultado.veredicto)) {
+      await ctx.runMutation(api.alerts.crearAlerta, {
+        callId: args.callId,
+        tipo: "veredicto_rojo",
+      });
+
+      const honeypot = await ctx.runAction(api.honeypot.activarHoneypotAction, {
+        callId: args.callId,
+        veredicto: resultado.veredicto,
+      });
+
+      if (honeypot.ok) {
+        honeypotAudioBytes = honeypot.audioBytes;
+      }
+    }
+
+    return {
+      ok: true as const,
+      veredicto: resultado.veredicto,
+      score: resultado.score,
+      honeypotAudioBytes,
+    };
+  },
+});

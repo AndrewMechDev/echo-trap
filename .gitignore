@@ -6,3 +6,5 @@
 node_modules/
 .next/
 .atl/
+test-audio/*/*
+!test-audio/*/.gitkeep
