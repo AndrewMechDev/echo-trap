@@ -47,6 +47,10 @@ Ambos juntos:
 pnpm dev
 ```
 
+## Detección de voz
+
+La detección de voz clonada corre 100% contra la API de **TruthScan** (`TRUTHSCAN_API_KEY`, seteada en Convex vía `npx convex env set`). No hay motor local ni microservicio propio — ver `DECISIONS.md`.
+
 ## Probar el flujo sin frontend armado
 
 ```bash

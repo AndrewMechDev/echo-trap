@@ -1,19 +1,23 @@
 import { v } from "convex/values";
 import { z } from "zod";
+import type { Verdict } from "@echo-trap/shared";
 import { action, internalMutation, query } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { TruthScanDetectionAdapter } from "./adapters/TruthScanDetectionAdapter";
-import { conTimeout, evaluarAudio } from "./usecases/evaluarAudio";
+import { evaluarAudio } from "./usecases/evaluarAudio";
+import { debeActivarHoneypot } from "./usecases/activarHoneypot";
 
-// CERO lógica de negocio de cálculo de veredicto acá (vive en usecases/evaluarAudio.ts)
-// — este archivo solo arma dependencias, aplica el timeout y persiste el resultado
-// (ver skill backend-senior-echotrap, regla 1).
+// Anotado explícito (en vez de dejar que TS infiera el retorno): esta action llama a
+// ctx.runAction(api.honeypot...), y `api` incluye a esta misma action — sin la
+// anotación, TS tira TS7022/TS7023 por referencia circular al inferir el tipo.
+type EvaluarAudioActionResult =
+  | { ok: false; reason: string }
+  | { ok: true; veredicto: Verdict; score: number; honeypotAudioBytes?: number[] };
 
-// TruthScan es motor único. Su flujo real (presigned URL -> subir audio -> /detect ->
-// sondear /query) tardó ~7s de punta a punta en pruebas reales — se deja margen extra.
-// Nunca se espera indefinidamente a ningún motor remoto (ver hallazgo de Reality
-// Defender, >10min, descartado por completo).
-const TRUTHSCAN_TIMEOUT_MS = 12000;
+// CERO lógica de negocio acá: solo arma dependencias (adapters concretos), llama al
+// usecase puro y persiste el resultado (ver skill backend-senior-echotrap, regla 1).
+// La decisión de activar el honeypot vive en el usecase (debeActivarHoneypot); acá solo
+// se dispara la cadena detección → honeypot → alerta cuando corresponde.
 
 const EvaluarAudioArgsSchema = z.object({
   callId: z.string(),
@@ -51,9 +55,9 @@ export const listarDeteccionesPorLlamada = query({
   },
 });
 
-// Action pública: recibe el audio de una llamada, lo evalúa con TruthScan (con timeout
-// duro) y persiste el veredicto. Es una `action` porque llama a una API externa (regla 4
-// de la skill).
+// Action pública: recibe el audio de una llamada, corre la detección contra TruthScan
+// (única fuente, ver DECISIONS.md) y persiste el resultado en la tabla `detections`.
+// Si el veredicto es "rojo", encadena la activación del honeypot y la alerta.
 export const evaluarAudioAction = action({
   args: {
     callId: v.id("calls"),
@@ -61,7 +65,7 @@ export const evaluarAudioAction = action({
     mimeType: v.string(),
     duracionMs: v.number(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<EvaluarAudioActionResult> => {
     const parsed = EvaluarAudioArgsSchema.safeParse({
       callId: args.callId,
       mimeType: args.mimeType,
@@ -73,25 +77,44 @@ export const evaluarAudioAction = action({
     }
 
     const detector = new TruthScanDetectionAdapter();
-    const resultadoDeteccion = await conTimeout(detector.detectar(args.audioBuffer), TRUTHSCAN_TIMEOUT_MS);
-    const veredicto = evaluarAudio(resultadoDeteccion);
 
-    if (!veredicto.ok || !veredicto.veredicto || veredicto.score === undefined) {
-      return { ok: false as const, reason: veredicto.reason ?? "no se pudo evaluar el audio" };
+    const resultado = await evaluarAudio(args.audioBuffer, detector);
+
+    if (!resultado.ok || !resultado.veredicto || resultado.score === undefined) {
+      return { ok: false as const, reason: resultado.reason ?? "no se pudo evaluar el audio" };
     }
 
     await ctx.runMutation(internal.detections.insertarDeteccion, {
       callId: args.callId,
       source: "truthscan",
-      score: veredicto.score,
-      veredicto: veredicto.veredicto,
+      score: resultado.score,
+      veredicto: resultado.veredicto,
       timestamp: Date.now(),
     });
 
+    let honeypotAudioBytes: number[] | undefined;
+
+    if (debeActivarHoneypot(resultado.veredicto)) {
+      await ctx.runMutation(api.alerts.crearAlerta, {
+        callId: args.callId,
+        tipo: "veredicto_rojo",
+      });
+
+      const honeypot = await ctx.runAction(api.honeypot.activarHoneypotAction, {
+        callId: args.callId,
+        veredicto: resultado.veredicto,
+      });
+
+      if (honeypot.ok) {
+        honeypotAudioBytes = honeypot.audioBytes;
+      }
+    }
+
     return {
       ok: true as const,
-      veredicto: veredicto.veredicto,
-      score: veredicto.score,
+      veredicto: resultado.veredicto,
+      score: resultado.score,
+      honeypotAudioBytes,
     };
   },
 });

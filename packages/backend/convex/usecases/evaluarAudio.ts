@@ -1,17 +1,20 @@
 import type { Verdict } from "@echo-trap/shared";
-import type { DetectionResult } from "@echo-trap/shared";
+import type { VoiceDetectionPort } from "../ports/VoiceDetectionPort";
 import { SCAM_THRESHOLD } from "../domain/thresholds";
 
-// Lógica pura: no importa Convex ni ningún SDK externo, solo tipos de dominio
+// Lógica pura: no importa Convex ni ningún SDK externo, solo ports y tipos de dominio
 // (ver skill backend-senior-echotrap, regla 2).
 
-// Motor único: TruthScan (ver DECISIONS.md, 2026-08-29 — se descartó el motor local de
-// Hugging Face porque daba falsos positivos con voces reales en pruebas del equipo).
-// Se mantiene el timeout duro igual que antes (ver hallazgo de Reality Defender, >10min)
-// aunque ahora no haya un segundo motor de respaldo: si TruthScan no responde a tiempo,
-// no hay veredicto — se le avisa al usuario que la detección no pudo completarse, nunca
-// se inventa un resultado.
-export async function conTimeout<T>(
+export interface Veredicto {
+  ok: boolean;
+  veredicto?: Verdict;
+  score?: number;
+  reason?: string;
+}
+
+// Límite de tiempo duro para el motor de detección — nunca un await simple sin margen
+// (ver skill backend-senior-echotrap, regla 10).
+async function conTimeout<T>(
   promesa: Promise<T>,
   ms: number
 ): Promise<T | { ok: false; reason: "timeout" }> {
@@ -21,30 +24,31 @@ export async function conTimeout<T>(
   return Promise.race([promesa, timeout]);
 }
 
-function veredictoDesdeScore(score: number): Verdict {
-  if (score >= SCAM_THRESHOLD.HIGH_CONFIDENCE) return "rojo";
-  if (score >= SCAM_THRESHOLD.SUSPICIOUS) return "amarillo";
-  return "verde";
-}
+// TruthScan es la única fuente del veredicto (ver DECISIONS.md: motor local descartado
+// por falsos positivos sistemáticos). Su flujo real (presigned URL -> subir audio ->
+// /detect -> sondear /query) tardó ~7s de punta a punta en pruebas, y el propio adapter
+// ya sondea internamente hasta ~4.2s de eso — con subida + detect + sondeo, el peor caso
+// medido ronda los ~10s. Acá se deja un margen externo de 12s como red de seguridad
+// (ver hallazgo de Reality Defender, >10min: nunca se espera indefinidamente a ningún
+// motor remoto).
+const TRUTHSCAN_TIMEOUT_MS = 12000;
 
-export interface Veredicto {
-  ok: boolean;
-  veredicto?: Verdict;
-  score?: number;
-  reason?: string;
-}
+export async function evaluarAudio(
+  audioBuffer: ArrayBuffer,
+  detector: VoiceDetectionPort
+): Promise<Veredicto> {
+  const resultado = await conTimeout(detector.detectar(audioBuffer), TRUTHSCAN_TIMEOUT_MS);
 
-// Evalúa el audio con el único motor de detección (TruthScan, inyectado como
-// VoiceDetectionPort). El caller (detections.ts) es responsable de aplicar el timeout
-// duro con conTimeout antes de llamar acá, o de envolver la llamada al detector.
-export function evaluarAudio(resultado: DetectionResult): Veredicto {
   if (!resultado.ok) {
-    return { ok: false, reason: resultado.reason };
+    return {
+      ok: false,
+      reason: "reason" in resultado ? resultado.reason : "motor de detección no disponible",
+    };
   }
 
-  return {
-    ok: true,
-    veredicto: veredictoDesdeScore(resultado.score),
-    score: resultado.score,
-  };
+  const score = resultado.score;
+  const veredicto: Verdict =
+    score >= SCAM_THRESHOLD.HIGH_CONFIDENCE ? "rojo" : score >= SCAM_THRESHOLD.SUSPICIOUS ? "amarillo" : "verde";
+
+  return { ok: true, veredicto, score };
 }
