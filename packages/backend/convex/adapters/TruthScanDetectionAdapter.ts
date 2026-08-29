@@ -30,6 +30,8 @@ interface QueryResponse {
   result?: number;
   result_details?: {
     mean_ai_prob?: number;
+    is_valid?: boolean;
+    msg?: string | null;
   };
 }
 
@@ -117,6 +119,16 @@ export class TruthScanDetectionAdapter implements VoiceDetectionPort {
         }
 
         if (data.status === "done") {
+          // TruthScan puede terminar "done" con is_valid:false (ej. audio de menos de 4s)
+          // y en ese caso igual manda result/mean_ai_prob en 0 — sin este chequeo se
+          // reportaría "real" por un audio que en realidad no se pudo analizar.
+          if (data.result_details?.is_valid === false) {
+            return {
+              ok: false,
+              reason: data.result_details.msg ?? "TruthScan marcó el audio como inválido (is_valid: false)",
+            };
+          }
+
           // mean_ai_prob viene en escala 0-1 (probabilidad de ser generado por IA).
           const probabilidad = data.result_details?.mean_ai_prob ?? data.result ?? 0;
           return {
