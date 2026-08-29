@@ -1,12 +1,23 @@
 import { v } from "convex/values";
 import { z } from "zod";
+import type { Verdict } from "@echo-trap/shared";
 import { action, internalMutation } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { TruthScanDetectionAdapter } from "./adapters/TruthScanDetectionAdapter";
 import { evaluarAudio } from "./usecases/evaluarAudio";
+import { debeActivarHoneypot } from "./usecases/activarHoneypot";
+
+// Anotado explícito (en vez de dejar que TS infiera el retorno): esta action llama a
+// ctx.runAction(api.honeypot...), y `api` incluye a esta misma action — sin la
+// anotación, TS tira TS7022/TS7023 por referencia circular al inferir el tipo.
+type EvaluarAudioActionResult =
+  | { ok: false; reason: string }
+  | { ok: true; veredicto: Verdict; score: number; honeypotAudioBytes?: number[] };
 
 // CERO lógica de negocio acá: solo arma dependencias (adapters concretos), llama al
 // usecase puro y persiste el resultado (ver skill backend-senior-echotrap, regla 1).
+// La decisión de activar el honeypot vive en el usecase (debeActivarHoneypot); acá solo
+// se dispara la cadena detección → honeypot → alerta cuando corresponde.
 
 // Valida el payload de entrada antes de procesarlo (regla 5 de la skill).
 const EvaluarAudioArgsSchema = z.object({
@@ -30,8 +41,9 @@ export const insertarDeteccion = internalMutation({
   },
 });
 
-// Action pública: recibe el audio de una llamada, corre la detección (local + TruthScan
-// como refuerzo no bloqueante) y persiste el/los resultado(s) en la tabla `detections`.
+// Action pública: recibe el audio de una llamada, corre la detección contra TruthScan
+// (única fuente, ver DECISIONS.md) y persiste el resultado en la tabla `detections`.
+// Si el veredicto es "rojo", encadena la activación del honeypot y la alerta.
 export const evaluarAudioAction = action({
   args: {
     callId: v.id("calls"),
@@ -39,7 +51,7 @@ export const evaluarAudioAction = action({
     mimeType: v.string(),
     duracionMs: v.number(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<EvaluarAudioActionResult> => {
     const parsed = EvaluarAudioArgsSchema.safeParse({
       callId: args.callId,
       mimeType: args.mimeType,
@@ -66,10 +78,29 @@ export const evaluarAudioAction = action({
       timestamp: Date.now(),
     });
 
+    let honeypotAudioBytes: number[] | undefined;
+
+    if (debeActivarHoneypot(resultado.veredicto)) {
+      await ctx.runMutation(api.alerts.crearAlerta, {
+        callId: args.callId,
+        tipo: "veredicto_rojo",
+      });
+
+      const honeypot = await ctx.runAction(api.honeypot.activarHoneypotAction, {
+        callId: args.callId,
+        veredicto: resultado.veredicto,
+      });
+
+      if (honeypot.ok) {
+        honeypotAudioBytes = honeypot.audioBytes;
+      }
+    }
+
     return {
       ok: true as const,
       veredicto: resultado.veredicto,
       score: resultado.score,
+      honeypotAudioBytes,
     };
   },
 });
