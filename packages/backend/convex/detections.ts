@@ -2,7 +2,6 @@ import { v } from "convex/values";
 import { z } from "zod";
 import { action, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { LocalWav2Vec2DetectionAdapter } from "./adapters/LocalWav2Vec2DetectionAdapter";
 import { TruthScanDetectionAdapter } from "./adapters/TruthScanDetectionAdapter";
 import { evaluarAudio } from "./usecases/evaluarAudio";
 
@@ -51,44 +50,26 @@ export const evaluarAudioAction = action({
       return { ok: false as const, reason: `payload inválido: ${parsed.error.message}` };
     }
 
-    const localDetector = new LocalWav2Vec2DetectionAdapter();
-    const remoteDetector = new TruthScanDetectionAdapter();
+    const detector = new TruthScanDetectionAdapter();
 
-    const resultado = await evaluarAudio(args.audioBuffer, localDetector, remoteDetector);
+    const resultado = await evaluarAudio(args.audioBuffer, detector);
 
-    if (!resultado.ok || !resultado.veredicto) {
+    if (!resultado.ok || !resultado.veredicto || resultado.score === undefined) {
       return { ok: false as const, reason: resultado.reason ?? "no se pudo evaluar el audio" };
     }
 
-    const timestamp = Date.now();
-
-    // Se persiste una fila por motor que efectivamente respondió, para conservar el
-    // detalle de cada fuente en el timeline (ver skill: TruthScan tardío se loguea pero
-    // nunca cambia el semáforo retroactivamente).
     await ctx.runMutation(internal.detections.insertarDeteccion, {
       callId: args.callId,
-      source: "local",
-      score: resultado.scoreLocal ?? 0,
+      source: "truthscan",
+      score: resultado.score,
       veredicto: resultado.veredicto,
-      timestamp,
+      timestamp: Date.now(),
     });
-
-    if (resultado.remotoLlegoATiempo && resultado.scoreRemoto !== undefined) {
-      await ctx.runMutation(internal.detections.insertarDeteccion, {
-        callId: args.callId,
-        source: "truthscan",
-        score: resultado.scoreRemoto,
-        veredicto: resultado.veredicto,
-        timestamp,
-      });
-    }
 
     return {
       ok: true as const,
       veredicto: resultado.veredicto,
-      scoreLocal: resultado.scoreLocal,
-      scoreRemoto: resultado.scoreRemoto,
-      remotoLlegoATiempo: resultado.remotoLlegoATiempo,
+      score: resultado.score,
     };
   },
 });

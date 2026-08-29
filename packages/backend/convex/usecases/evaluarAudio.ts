@@ -8,16 +8,12 @@ import { SCAM_THRESHOLD } from "../domain/thresholds";
 export interface Veredicto {
   ok: boolean;
   veredicto?: Verdict;
-  scoreLocal?: number;
-  scoreRemoto?: number;
-  remotoLlegoATiempo: boolean;
+  score?: number;
   reason?: string;
 }
 
-// Envuelve una promesa con un límite de tiempo duro. En pruebas del equipo, Reality
-// Defender llegó a tardar >10min y fue descartado por completo del flujo (ver skill,
-// regla 10) — por eso NUNCA esperamos indefinidamente a un motor remoto: si no responde
-// dentro del margen, se lo trata como timeout y el semáforo sigue solo con el motor local.
+// Límite de tiempo duro para el motor de detección — nunca un await simple sin margen
+// (ver skill backend-senior-echotrap, regla 10).
 async function conTimeout<T>(
   promesa: Promise<T>,
   ms: number
@@ -28,65 +24,25 @@ async function conTimeout<T>(
   return Promise.race([promesa, timeout]);
 }
 
-// Orquesta el motor local (fuente primaria, rápida) y TruthScan (señal secundaria, no
-// bloqueante). El motor local determina el color inicial del semáforo; TruthScan solo
-// refuerza el veredicto si llega a tiempo.
+// TruthScan es la única fuente del veredicto (ver DECISIONS.md: motor local descartado
+// por falsos positivos sistemáticos). El propio adapter ya sondea internamente hasta
+// ~4.2s; acá se pone un margen externo generoso como red de seguridad.
 export async function evaluarAudio(
   audioBuffer: ArrayBuffer,
-  localDetector: VoiceDetectionPort,
-  remoteDetector: VoiceDetectionPort
+  detector: VoiceDetectionPort
 ): Promise<Veredicto> {
-  const [local, remoto] = await Promise.all([
-    conTimeout(localDetector.detectar(audioBuffer), 3000), // motor local: 3s de margen
-    conTimeout(remoteDetector.detectar(audioBuffer), 4000), // TruthScan: 4s, si no responde se ignora
-  ]);
+  const resultado = await conTimeout(detector.detectar(audioBuffer), 8000);
 
-  // Sin el motor local no hay veredicto posible: es la fuente primaria del semáforo.
-  if (!local.ok) {
+  if (!resultado.ok) {
     return {
       ok: false,
-      reason: "motor local no disponible",
-      remotoLlegoATiempo: false,
+      reason: "reason" in resultado ? resultado.reason : "motor de detección no disponible",
     };
   }
 
-  const scoreLocal = local.score;
-  const remotoLlegoATiempo = remoto.ok;
+  const score = resultado.score;
+  const veredicto: Verdict =
+    score >= SCAM_THRESHOLD.HIGH_CONFIDENCE ? "rojo" : score >= SCAM_THRESHOLD.SUSPICIOUS ? "amarillo" : "verde";
 
-  // Caso más común en la demo: TruthScan no respondió a tiempo (o falló) → veredicto
-  // basado SOLO en el score local, contra el umbral SUSPICIOUS.
-  if (!remoto.ok) {
-    const veredicto: Verdict =
-      scoreLocal >= SCAM_THRESHOLD.SUSPICIOUS ? "rojo" : scoreLocal >= SCAM_THRESHOLD.SUSPICIOUS / 2 ? "amarillo" : "verde";
-
-    return {
-      ok: true,
-      veredicto,
-      scoreLocal,
-      remotoLlegoATiempo: false,
-    };
-  }
-
-  // TruthScan respondió a tiempo → veredicto por consenso entre ambos motores.
-  const scoreRemoto = remoto.score;
-  const ambosAltaConfianza =
-    scoreLocal >= SCAM_THRESHOLD.HIGH_CONFIDENCE && scoreRemoto >= SCAM_THRESHOLD.HIGH_CONFIDENCE;
-  const promedio = (scoreLocal + scoreRemoto) / 2;
-
-  let veredicto: Verdict;
-  if (ambosAltaConfianza) {
-    veredicto = "rojo";
-  } else if (promedio >= SCAM_THRESHOLD.SUSPICIOUS) {
-    veredicto = "amarillo";
-  } else {
-    veredicto = "verde";
-  }
-
-  return {
-    ok: true,
-    veredicto,
-    scoreLocal,
-    scoreRemoto,
-    remotoLlegoATiempo: true,
-  };
+  return { ok: true, veredicto, score };
 }

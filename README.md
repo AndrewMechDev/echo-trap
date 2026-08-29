@@ -8,7 +8,6 @@ Contexto completo del proyecto, arquitectura y decisiones: ver [`CLAUDE.md`](./C
 
 - **pnpm 11.24.0** (obligatorio, no usar npm/yarn)
 - **Node.js** (via `fnm` o similar)
-- **Python 3.11** (`py -3.11` en Windows) — solo para `services/detection-py`
 
 ## Estructura
 
@@ -16,7 +15,6 @@ Contexto completo del proyecto, arquitectura y decisiones: ver [`CLAUDE.md`](./C
 apps/web/                  Frontend — Next.js 15 + React 19 (PWA)
 packages/backend/          Backend — Convex (funciones, adapters, schema)
 packages/shared/           Tipos y schemas zod compartidos
-services/detection-py/     Microservicio Python — detección local (wav2vec2, CPU)
 ```
 
 ## Setup inicial
@@ -25,7 +23,7 @@ services/detection-py/     Microservicio Python — detección local (wav2vec2, 
 pnpm install
 ```
 
-Copiar los `.env.example` a `.env`/`.env.local` en `apps/web`, `packages/backend` y `services/detection-py`, completando las keys que ya se tengan (ver `CLAUDE.md` sección 8).
+Copiar los `.env.example` a `.env`/`.env.local` en `apps/web` y `packages/backend`, completando las keys que ya se tengan (ver `CLAUDE.md` sección 8).
 
 ## Levantar el proyecto
 
@@ -47,33 +45,9 @@ Ambos juntos:
 pnpm dev
 ```
 
-## Levantar el microservicio de detección (Python, fuera de pnpm)
+## Detección de voz
 
-**Windows (PowerShell):**
-
-```powershell
-cd services/detection-py
-py -3.11 -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install torch --index-url https://download.pytorch.org/whl/cpu
-pip install -r requirements.txt
-$env:INTERNAL_API_KEY = "valor-compartido-con-convex"
-uvicorn main:app --reload --port 8000
-```
-
-**macOS/Linux:**
-
-```bash
-cd services/detection-py
-python3.11 -m venv .venv
-source .venv/bin/activate
-pip install torch --index-url https://download.pytorch.org/whl/cpu
-pip install -r requirements.txt
-export INTERNAL_API_KEY="valor-compartido-con-convex"
-uvicorn main:app --reload --port 8000
-```
-
-Verificar que está despierto: `GET http://localhost:8000/health` debe responder `{"status": "ok"}`.
+La detección de voz clonada corre 100% contra la API de **TruthScan** (`TRUTHSCAN_API_KEY`, seteada en Convex vía `npx convex env set`). No hay motor local ni microservicio propio — ver `DECISIONS.md`.
 
 ## Ramas
 
