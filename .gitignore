@@ -6,3 +6,8 @@
 node_modules/
 .next/
 .atl/
+test-audio/**/*.wav
+test-audio/**/*.mp3
+test-audio/**/*.m4a
+test-audio/**/*.flac
+test-audio/**/*.ogg
