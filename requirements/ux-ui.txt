@@ -1,0 +1,675 @@
+
+PROMPT MAESTRO — PRINCIPIOS UI/UX Y SISTEMA DE DISEÑO
+
+Analiza los requerimientos, funcionalidades, librerías, componentes, skills y recursos disponibles en el proyecto y utilízalos como fuente principal para implementar la experiencia del producto.
+
+Aplica las siguientes buenas prácticas de diseño UI/UX, tomando como referencia la filosofía de diseño de Apple, especialmente sus principios de simplicidad, claridad, consistencia, jerarquía visual, profundidad, feedback, accesibilidad y atención al detalle.
+
+No reemplaces ni contradigas las tecnologías, librerías, componentes o patrones ya establecidos en el proyecto. Adáptate a ellos y reutiliza los recursos existentes siempre que sea posible.
+
+==================================================
+1. FILOSOFÍA GENERAL DE DISEÑO
+==================================================
+
+Diseñar una experiencia:
+
+- profesional
+- moderna
+- limpia
+- intuitiva
+- consistente
+- confiable
+- tecnológica
+- elegante
+- funcional
+- accesible
+
+Priorizar:
+
+1. Claridad
+2. Jerarquía
+3. Consistencia
+4. Simplicidad
+5. Feedback
+6. Accesibilidad
+7. Eficiencia
+8. Detalle visual
+
+No agregar elementos únicamente por decoración.
+
+Cada elemento visual debe tener una función clara.
+
+Evitar interfaces sobrecargadas, exceso de colores, exceso de bordes, sombras innecesarias, componentes redundantes y elementos que compitan por la atención.
+
+==================================================
+2. PRINCIPIOS DE APPLE
+==================================================
+
+Aplicar una filosofía visual inspirada en Apple:
+
+- simplicidad
+- claridad
+- profundidad
+- jerarquía visual
+- consistencia
+- precisión
+- uso inteligente del espacio
+- animaciones sutiles
+- feedback inmediato
+- interacción natural
+- contenido como protagonista
+
+No intentar copiar literalmente interfaces de Apple.
+
+Tomar únicamente sus principios de diseño y adaptarlos al producto.
+
+La interfaz debe sentirse cuidadosamente diseñada, no simplemente ensamblada a partir de componentes.
+
+==================================================
+3. JERARQUÍA VISUAL
+==================================================
+
+Cada pantalla debe tener una jerarquía evidente.
+
+El usuario debe poder identificar rápidamente:
+
+- dónde se encuentra
+- qué está viendo
+- qué información es importante
+- qué acción puede realizar
+- cuál es la acción principal
+- qué información es secundaria
+
+Utilizar correctamente:
+
+- tamaño
+- peso tipográfico
+- espaciado
+- agrupación
+- posición
+- contraste
+- profundidad
+- iconografía
+
+No utilizar múltiples elementos con el mismo nivel de importancia visual.
+
+Cada pantalla debe tener una acción primaria claramente identificable cuando corresponda.
+
+==================================================
+4. ESPACIADO Y LAYOUT
+==================================================
+
+Utilizar un sistema de espaciado consistente.
+
+Mantener:
+
+- márgenes coherentes
+- padding consistente
+- separación lógica entre secciones
+- alineación precisa
+- proporciones equilibradas
+- suficiente espacio negativo
+
+Evitar elementos pegados entre sí.
+
+Evitar también espacios excesivamente grandes que fragmenten innecesariamente la información.
+
+Utilizar grids y estructuras consistentes para mantener alineaciones.
+
+==================================================
+5. TIPOGRAFÍA
+==================================================
+
+Utilizar una jerarquía tipográfica clara.
+
+Definir consistentemente:
+
+- Display / Hero
+- Heading
+- Subheading
+- Body
+- Caption
+- Label
+- Metadata
+
+Priorizar legibilidad sobre ornamentación.
+
+No utilizar demasiadas familias tipográficas.
+
+Utilizar peso, tamaño y espaciado para establecer jerarquía en lugar de depender únicamente del color.
+
+Los textos importantes deben poder escanearse rápidamente.
+
+==================================================
+6. COLOR
+==================================================
+
+Utilizar un sistema de color semántico y consistente.
+
+Definir claramente:
+
+- Primary
+- Secondary
+- Background
+- Surface
+- Border
+- Text
+- Muted text
+- Success
+- Warning
+- Error
+- Information
+
+Los colores de estado deben tener significado consistente.
+
+No utilizar color como único mecanismo para transmitir información.
+
+Mantener suficiente contraste.
+
+Evitar colores excesivamente saturados cuando no sean necesarios.
+
+==================================================
+7. BOTONES
+==================================================
+
+Los botones deben comunicar claramente qué acción ejecutarán.
+
+Diferenciar visualmente:
+
+- Primary action
+- Secondary action
+- Tertiary action
+- Destructive action
+- Ghost action
+
+El botón principal debe destacar visualmente sobre las acciones secundarias.
+
+Utilizar textos de acción claros.
+
+Preferir:
+
+"Analizar llamada"
+
+"Ver detalles"
+
+"Confirmar"
+
+"Reportar"
+
+sobre textos ambiguos como:
+
+"Continuar"
+
+"OK"
+
+"Enviar"
+
+cuando el contexto permita ser más específico.
+
+Todos los botones deben proporcionar estados visuales adecuados:
+
+- default
+- hover
+- pressed
+- focused
+- disabled
+- loading
+
+No crear botones con tamaños, radios o estilos arbitrariamente diferentes.
+
+Mantener consistencia en todo el producto.
+
+==================================================
+8. CARDS
+==================================================
+
+Las cards deben utilizarse para agrupar información relacionada.
+
+No convertir toda la interfaz en cards.
+
+Una card debe tener una razón funcional para existir.
+
+Mantener consistencia en:
+
+- padding
+- border radius
+- jerarquía
+- títulos
+- metadata
+- acciones
+- estados
+
+Las cards relacionadas deben compartir el mismo lenguaje visual.
+
+Cuando una card represente información crítica, la jerarquía debe permitir identificar rápidamente el dato principal.
+
+==================================================
+9. MODALES
+==================================================
+
+Utilizar modales únicamente cuando el usuario necesite concentrarse en una tarea específica.
+
+No utilizar modales para información que pueda mostrarse directamente en la pantalla.
+
+Los modales deben tener:
+
+- título claro
+- contexto suficiente
+- contenido conciso
+- acción principal
+- acción secundaria cuando sea necesaria
+- cierre claramente identificable
+
+Evitar modales excesivamente grandes.
+
+Evitar que los botones importantes queden fuera del área visible.
+
+En contenido extenso, mantener el encabezado y las acciones principales accesibles mientras el contenido puede desplazarse.
+
+==================================================
+10. POPOVERS, TOOLTIPS Y MENÚS CONTEXTUALES
+==================================================
+
+Utilizar cada componente según su propósito.
+
+Tooltips:
+
+Para explicar brevemente controles cuyo significado no sea evidente.
+
+Popovers:
+
+Para mostrar información adicional o acciones relacionadas con un elemento.
+
+Dropdowns:
+
+Para seleccionar opciones o ejecutar acciones agrupadas.
+
+Context menus:
+
+Para acciones secundarias relacionadas con un elemento específico.
+
+No utilizar tooltips para información crítica que el usuario necesariamente deba conocer.
+
+No ocultar acciones importantes dentro de menús innecesariamente.
+
+==================================================
+11. FORMULARIOS
+==================================================
+
+Los formularios deben minimizar la carga cognitiva.
+
+Cada campo debe tener:
+
+- label
+- propósito claro
+- estado
+- validación cuando corresponda
+- mensaje de error comprensible
+
+No depender exclusivamente del placeholder como label.
+
+Agrupar campos relacionados.
+
+Mostrar errores cerca del campo correspondiente.
+
+Validar de forma clara y oportuna.
+
+Evitar solicitar información que no sea necesaria.
+
+==================================================
+12. TABLAS
+==================================================
+
+Las tablas deben estar optimizadas para escaneo rápido.
+
+Utilizar:
+
+- encabezados claros
+- alineación consistente
+- separación visual suficiente
+- estados
+- acciones contextuales
+- paginación cuando sea necesaria
+- búsqueda o filtros cuando el volumen lo justifique
+
+La información más importante debe ser fácilmente identificable.
+
+Las acciones por fila deben mantenerse consistentes.
+
+Evitar tablas visualmente saturadas.
+
+==================================================
+13. NAVEGACIÓN
+==================================================
+
+La navegación debe ser predecible.
+
+El usuario debe comprender:
+
+- dónde está
+- cómo llegó
+- qué opciones tiene
+- cómo regresar
+- qué sección está activa
+
+Mantener una estructura de navegación consistente.
+
+No cambiar arbitrariamente la posición de los controles entre pantallas.
+
+Utilizar breadcrumbs, tabs, sidebars o navegación secundaria únicamente cuando aporten valor.
+
+==================================================
+14. ESTADOS DE LA INTERFAZ
+==================================================
+
+Diseñar explícitamente todos los estados importantes.
+
+Cada componente debe contemplar cuando corresponda:
+
+- default
+- hover
+- active
+- selected
+- focused
+- disabled
+- loading
+- success
+- warning
+- error
+- empty
+- offline
+
+No asumir que una pantalla siempre tendrá datos.
+
+Los estados vacíos deben explicar qué ocurre y qué puede hacer el usuario.
+
+==================================================
+15. LOADING Y FEEDBACK
+==================================================
+
+Toda acción que requiera procesamiento debe proporcionar feedback.
+
+Utilizar:
+
+- skeletons
+- spinners
+- progress indicators
+- estados de procesamiento
+- microinteracciones
+
+según corresponda.
+
+Evitar pantallas congeladas o acciones que parezcan no haber funcionado.
+
+Cuando una operación tarde varios segundos, comunicar claramente que el sistema está procesando la solicitud.
+
+==================================================
+16. NOTIFICACIONES Y ALERTAS
+==================================================
+
+Las notificaciones deben ser relevantes y no invasivas.
+
+Diferenciar entre:
+
+- información
+- éxito
+- advertencia
+- error
+- acción requerida
+
+Las alertas críticas deben destacar claramente sin recurrir al alarmismo visual.
+
+No utilizar mensajes genéricos como:
+
+"Ha ocurrido un error"
+
+cuando sea posible explicar:
+
+qué ocurrió
+
+por qué ocurrió
+
+cómo solucionarlo
+
+==================================================
+17. MICROINTERACCIONES
+==================================================
+
+Utilizar animaciones únicamente cuando aporten significado.
+
+Las animaciones deben:
+
+- ser rápidas
+- naturales
+- discretas
+- consistentes
+- reforzar la relación causa → efecto
+
+Utilizar microinteracciones para:
+
+- confirmar acciones
+- indicar cambios de estado
+- mostrar progreso
+- orientar al usuario
+- proporcionar feedback
+
+Evitar animaciones decorativas excesivas.
+
+==================================================
+18. PROFUNDIDAD Y SOMBRAS
+==================================================
+
+Aplicar profundidad de manera sutil.
+
+Utilizar:
+
+- elevation
+- sombras suaves
+- transparencias
+- overlays
+- capas
+
+únicamente cuando ayuden a establecer jerarquía espacial.
+
+Evitar sombras excesivamente fuertes.
+
+Los componentes no deben parecer objetos flotando arbitrariamente.
+
+==================================================
+19. ICONOGRAFÍA
+==================================================
+
+Utilizar un sistema de iconos consistente.
+
+Mantener coherencia en:
+
+- estilo
+- grosor
+- tamaño
+- proporción
+- alineación
+
+Los iconos deben complementar el texto, no sustituirlo cuando su significado pueda resultar ambiguo.
+
+No mezclar diferentes estilos de iconografía sin una razón clara.
+
+==================================================
+20. ACCESIBILIDAD
+==================================================
+
+Diseñar considerando accesibilidad desde el principio.
+
+Garantizar:
+
+- contraste adecuado
+- tamaños legibles
+- estados de focus visibles
+- áreas de interacción suficientemente grandes
+- navegación lógica
+- textos comprensibles
+- indicadores que no dependan exclusivamente del color
+
+La interfaz debe seguir siendo comprensible cuando el usuario tenga limitaciones visuales o utilice diferentes dispositivos.
+
+==================================================
+21. RESPONSIVE DESIGN
+==================================================
+
+La interfaz debe adaptarse correctamente a diferentes tamaños de pantalla.
+
+No limitarse a escalar elementos.
+
+Reorganizar la jerarquía cuando sea necesario.
+
+Considerar:
+
+- desktop
+- tablet
+- mobile
+
+Los componentes deben conservar su funcionalidad y legibilidad en diferentes resoluciones.
+
+==================================================
+22. CONSISTENCIA DE COMPONENTES
+==================================================
+
+Crear y reutilizar un sistema consistente de componentes.
+
+Evitar implementar múltiples versiones visualmente diferentes del mismo componente.
+
+Antes de crear un nuevo componente, verificar si ya existe uno en:
+
+- librerías instaladas
+- design system
+- componentes existentes
+- recursos del proyecto
+- skills disponibles
+
+Reutilizar antes de duplicar.
+
+==================================================
+23. DISEÑO BASADO EN CONTEXTO
+==================================================
+
+No diseñar cada pantalla de forma aislada.
+
+Analizar cómo cada vista se relaciona con:
+
+- navegación
+- acciones anteriores
+- acciones posteriores
+- información compartida
+- estados globales
+- componentes existentes
+
+La experiencia completa debe sentirse como un único producto.
+
+==================================================
+24. PREVENCIÓN DE ERRORES
+==================================================
+
+La interfaz debe prevenir errores antes de que ocurran.
+
+Utilizar:
+
+- validaciones
+- confirmaciones cuando exista riesgo
+- restricciones apropiadas
+- mensajes preventivos
+- estados claros
+
+Para acciones destructivas o irreversibles, solicitar confirmación cuando corresponda.
+
+No utilizar confirmaciones innecesarias para acciones simples.
+
+==================================================
+25. CONTEXTUALIDAD
+==================================================
+
+Mostrar la información adecuada en el momento adecuado.
+
+No mostrar todas las opciones simultáneamente.
+
+Aplicar progressive disclosure cuando exista demasiada información.
+
+Mostrar primero lo esencial y permitir acceder a detalles adicionales cuando sean necesarios.
+
+==================================================
+26. EXPERIENCIA ORIENTADA A LA TAREA
+==================================================
+
+Cada pantalla debe responder claramente:
+
+- ¿Qué puede hacer el usuario aquí?
+- ¿Cuál es la acción principal?
+- ¿Qué información necesita para realizarla?
+- ¿Qué ocurre después?
+- ¿Cómo puede deshacer o corregir una acción?
+
+Reducir pasos innecesarios.
+
+Evitar flujos artificialmente largos.
+
+==================================================
+27. DETALLE Y POLISH
+==================================================
+
+Antes de considerar terminada una interfaz, revisar:
+
+- alineaciones
+- espaciados
+- tamaños
+- consistencia de componentes
+- estados
+- feedback
+- tipografía
+- iconografía
+- contraste
+- responsive behavior
+- errores
+- loading
+- empty states
+- microinteracciones
+
+El objetivo no es únicamente que funcione.
+
+Debe sentirse como un producto terminado y cuidadosamente diseñado.
+
+==================================================
+28. USO DE LOS RECURSOS EXISTENTES DEL PROYECTO
+==================================================
+
+Antes de implementar nuevos patrones:
+
+1. Revisar los requerimientos existentes.
+2. Revisar las librerías instaladas.
+3. Revisar los componentes disponibles.
+4. Revisar los skills disponibles.
+5. Revisar el design system existente.
+6. Identificar patrones reutilizables.
+7. Mantener la arquitectura existente.
+8. Evitar introducir dependencias innecesarias.
+
+Cuando una librería existente resuelva correctamente una necesidad, utilizarla en lugar de crear una solución paralela.
+
+==================================================
+29. REGLA DE ORO
+==================================================
+
+No diseñar interfaces únicamente para que "se vean bonitas".
+
+Diseñar para que sean:
+
+- claras
+- rápidas de comprender
+- fáciles de utilizar
+- consistentes
+- accesibles
+- confiables
+- eficientes
+- visualmente refinadas
+
+La estética debe estar al servicio de la funcionalidad.
+
+El resultado final debe transmitir la sensación de un producto tecnológico premium, donde cada componente, interacción, transición y decisión visual parece intencional.
+```
